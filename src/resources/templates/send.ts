@@ -1,0 +1,119 @@
+import { z } from "zod";
+
+// Header parameters for sending a template
+const headerParamSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), text: z.string().min(1) }),
+  z.object({
+    type: z.literal("image"),
+    image: z.object({ id: z.string().min(1).optional(), link: z.string().url().optional() }).refine((v) => !!(v.id || v.link), {
+      message: "image requires id or link"
+    })
+  }),
+  z.object({
+    type: z.literal("video"),
+    video: z.object({ id: z.string().min(1).optional(), link: z.string().url().optional() }).refine((v) => !!(v.id || v.link), {
+      message: "video requires id or link"
+    })
+  }),
+  z.object({
+    type: z.literal("document"),
+    document: z.object({ id: z.string().min(1).optional(), link: z.string().url().optional() }).refine((v) => !!(v.id || v.link), {
+      message: "document requires id or link"
+    })
+  }),
+  z.object({
+    type: z.literal("location"),
+    location: z.object({
+      latitude: z.union([z.number(), z.string()]),
+      longitude: z.union([z.number(), z.string()]),
+      name: z.string().min(1).optional(),
+      address: z.string().min(1).optional()
+    })
+  })
+]);
+
+// Body parameters
+const bodyParamSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({
+    type: z.literal("currency"),
+    currency: z.object({ fallback_value: z.string(), code: z.string().min(1), amount_1000: z.number().int() })
+  }),
+  z.object({ type: z.literal("date_time"), date_time: z.object({ fallback_value: z.string() }) })
+]);
+
+// Button parameters
+const buttonQuickReplySchema = z.object({
+  type: z.literal("button"),
+  sub_type: z.literal("quick_reply"),
+  index: z.union([z.number().int().min(0).max(9), z.string()]),
+  parameters: z.array(z.object({ type: z.literal("payload"), payload: z.string().min(1) })).min(1)
+});
+
+const buttonUrlSchema = z.object({
+  type: z.literal("button"),
+  sub_type: z.literal("url"),
+  index: z.union([z.number().int().min(0).max(9), z.string()]),
+  parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1) })).min(1)
+});
+
+const buttonPhoneSchema = z.object({
+  type: z.literal("button"),
+  sub_type: z.literal("phone_number"),
+  index: z.union([z.number().int().min(0).max(9), z.string()]),
+  parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1) })).optional()
+});
+
+const buttonCopyCodeSchema = z.object({
+  type: z.literal("button"),
+  sub_type: z.literal("copy_code"),
+  index: z.union([z.number().int().min(0).max(9), z.string()]),
+  parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1).max(15) })).min(1)
+});
+
+const buttonFlowSchema = z.object({
+  type: z.literal("button"),
+  sub_type: z.literal("flow"),
+  index: z.union([z.number().int().min(0).max(9), z.string()]),
+  parameters: z.array(z.object({ type: z.literal("payload"), payload: z.any() })).optional()
+});
+
+const buttonParamSchema = z.union([buttonQuickReplySchema, buttonUrlSchema, buttonPhoneSchema, buttonCopyCodeSchema, buttonFlowSchema]);
+
+export const templateSendInputSchema = z.object({
+  name: z.string().min(1),
+  language: z.string().min(1),
+  header: headerParamSchema.optional(),
+  body: z.array(bodyParamSchema).optional(),
+  buttons: z.array(buttonParamSchema).optional()
+});
+
+export type TemplateSendInput = z.infer<typeof templateSendInputSchema>;
+
+/**
+ * Build a Template message payload from typed parameters.
+ * Validates placeholders and structure with Zod before returning the payload expected by Meta.
+ * @category Templates
+ */
+export function buildTemplateSendPayload(input: TemplateSendInput) {
+  const parsed = templateSendInputSchema.parse(input);
+
+  const components: Array<Record<string, unknown>> = [];
+  if (parsed.header) {
+    components.push({ type: "header", parameters: [parsed.header] });
+  }
+  if (parsed.body && parsed.body.length > 0) {
+    components.push({ type: "body", parameters: parsed.body });
+  }
+  if (parsed.buttons && parsed.buttons.length > 0) {
+    for (const btn of parsed.buttons) {
+      components.push(btn);
+    }
+  }
+
+  return {
+    name: parsed.name,
+    language: { code: parsed.language },
+    components
+  };
+}

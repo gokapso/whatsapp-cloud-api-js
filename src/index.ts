@@ -1,0 +1,10 @@
+export { WhatsAppClient } from "./client";
+export type { WhatsAppClientConfig, RequestOptions } from "./client";
+export { MessagesResource } from "./resources/messages";
+export { MediaResource } from "./resources/media";
+export { TemplatesResource } from "./resources/templates";
+export { PhoneNumbersResource } from "./resources/phone-numbers";
+export * as TemplateDefinition from "./resources/templates/definition";
+export { buildTemplateSendPayload, templateSendInputSchema } from "./resources/templates/send";
+export { verifySignature } from "./webhooks/verify";
+export * from "./types";

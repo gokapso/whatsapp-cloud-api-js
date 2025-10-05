@@ -1,0 +1,61 @@
+{
+  "name": "@kapso/whatsapp-cloud-api",
+  "version": "0.0.1",
+  "description": "TypeScript client for WhatsApp Business Cloud API with Kapso proxy support, typed responses, and Zod-validated builders.",
+  "main": "./dist/index.cjs",
+  "scripts": {
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
+    "prepare": "npm run build",
+    "docs": "typedoc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\""
+  },
+  "keywords": [],
+  "author": "Kapso",
+  "license": "MIT",
+  "dependencies": {
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "esbuild": "^0.25.10",
+    "eslint": "^9.37.0",
+    "fdir": "^6.5.0",
+    "msw": "^2.11.3",
+    "tsdown": "^0.15.6",
+    "typedoc": "^0.28.13",
+    "typedoc-plugin-markdown": "^4.9.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kapso-ai/whatsapp-cloud-api-js.git"
+  },
+  "homepage": "https://kapso.ai",
+  "bugs": {
+    "url": "https://github.com/kapso-ai/whatsapp-cloud-api-js/issues"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "files": [
+    "dist"
+  ]
+}
