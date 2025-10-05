@@ -58,7 +58,7 @@ Notes:
 ```ts
 import { TemplateDefinition } from "@kapso/whatsapp-cloud-api";
 
-const tmpl = TemplateDefinition.buildTemplateDefinition({
+const templateDefinition = TemplateDefinition.buildTemplateDefinition({
   name: "seasonal_promo",
   language: "en_US",
   category: "MARKETING",
@@ -72,10 +72,10 @@ const tmpl = TemplateDefinition.buildTemplateDefinition({
 
 await client.templates.create({
   businessAccountId: "<WABA_ID>",
-  name: tmpl.name,
-  language: tmpl.language,
-  category: tmpl.category,
-  components: tmpl.components,
+  name: templateDefinition.name,
+  language: templateDefinition.language,
+  category: templateDefinition.category,
+  components: templateDefinition.components,
 });
 ```
 
@@ -102,19 +102,20 @@ await client.messages.sendTemplate({
 ## Media
 
 ```ts
-await client.media.upload({ phoneNumberId: "<ID>", type: "image", file: myBlob, fileName: "photo.png" });
-const meta = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: "<ID>" }); // Kapso requires phone_number_id
-await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<ID>" });
+const imageBlob = new Blob([/* binary data */], { type: "image/png" });
+await client.media.upload({ phoneNumberId: "<PHONE_NUMBER_ID>", type: "image", file: imageBlob, fileName: "photo.png" });
+const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" }); // Kapso requires phone_number_id
+await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" });
 ```
 
 ## Phone Numbers
 
 ```ts
-await client.phoneNumbers.requestCode({ phoneNumberId: "<ID>", codeMethod: "SMS", language: "en_US" });
-await client.phoneNumbers.verifyCode({ phoneNumberId: "<ID>", code: "123456" });
-await client.phoneNumbers.register({ phoneNumberId: "<ID>", pin: "000111" });
-await client.phoneNumbers.settings.update({ phoneNumberId: "<ID>", fallback_language: "en_US" });
-await client.phoneNumbers.businessProfile.update({ phoneNumberId: "<ID>", about: "My Shop", websites: ["https://example.com"] });
+await client.phoneNumbers.requestCode({ phoneNumberId: "<PHONE_NUMBER_ID>", codeMethod: "SMS", language: "en_US" });
+await client.phoneNumbers.verifyCode({ phoneNumberId: "<PHONE_NUMBER_ID>", code: "123456" });
+await client.phoneNumbers.register({ phoneNumberId: "<PHONE_NUMBER_ID>", pin: "000111" });
+await client.phoneNumbers.settings.update({ phoneNumberId: "<PHONE_NUMBER_ID>", fallback_language: "en_US" });
+await client.phoneNumbers.businessProfile.update({ phoneNumberId: "<PHONE_NUMBER_ID>", about: "My Shop", websites: ["https://example.com"] });
 ```
 
 ## Webhooks
