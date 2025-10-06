@@ -44,7 +44,7 @@ describe("Template definition validation", () => {
           }
         ]
       })
-    ).toThrow(/header_text/i);
+    ).toThrow(/headerText/i);
   });
 
   it("accepts header text with positional example", () => {
@@ -58,7 +58,7 @@ describe("Template definition validation", () => {
           format: "TEXT",
           text: "Sale starts {{1}}!",
           example: {
-            header_text: ["December 1"]
+            headerText: ["December 1"]
           }
         },
         {
@@ -69,7 +69,7 @@ describe("Template definition validation", () => {
     });
 
     expect(result.components[0]).toMatchObject({
-      example: { header_text: ["December 1"] }
+      example: { headerText: ["December 1"] }
     });
   });
 
@@ -100,10 +100,10 @@ describe("Template definition validation", () => {
             type: "HEADER",
             format: "TEXT",
             text: "Hi",
-            example: { header_text: ["Hi"] }
-          }
-        ]
-      })
+            example: { headerText: ["Hi"] }
+        }
+      ]
+    })
     ).toThrow(/body component/i);
   });
 });

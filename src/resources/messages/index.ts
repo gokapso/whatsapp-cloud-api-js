@@ -1,5 +1,6 @@
+import { z } from "zod";
 import type { WhatsAppClient } from "../../client";
-import type { SendMessageResponse } from "../../types";
+import type { MessageListResponse, SendMessageResponse } from "../../types";
 import { MessageTransport } from "./base";
 import type { GraphSuccessResponse } from "../../types";
 import { TextMessageSender } from "./text";
@@ -26,6 +27,23 @@ import {
   CallPermissionInteractiveInput,
   RawInteractiveInput
 } from "./interactive";
+
+const queryHistorySchema = z
+  .object({
+    phoneNumberId: z.string().min(1),
+    direction: z.string().optional(),
+    status: z.string().optional(),
+    since: z.string().optional(),
+    until: z.string().optional(),
+    conversationId: z.string().optional(),
+    page: z.number().int().positive().optional(),
+    perPage: z.number().int().positive().optional()
+  })
+  .passthrough();
+
+function cleanQuery(query: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined));
+}
 
 /**
  * Send WhatsApp messages of all supported types.
@@ -138,16 +156,31 @@ export class MessagesResource {
     return this.interactiveSender.sendRaw(input);
   }
 
-  async markRead(input: { phoneNumberId: string; messageId: string }): Promise<GraphSuccessResponse> {
+  async markRead(input: { phoneNumberId: string; messageId: string; typingIndicator?: { type: "text" } }): Promise<GraphSuccessResponse> {
     const payload = {
-      messaging_product: "whatsapp",
+      messagingProduct: "whatsapp",
       status: "read" as const,
-      message_id: input.messageId
+      messageId: input.messageId,
+      ...(input.typingIndicator ? { typingIndicator: input.typingIndicator } : {})
     };
 
     return this.client.request<GraphSuccessResponse>("POST", `${input.phoneNumberId}/messages`, {
       body: payload,
       responseType: "json"
     });
+  }
+
+  async query(input: z.infer<typeof queryHistorySchema>): Promise<MessageListResponse> {
+    const { phoneNumberId, ...rest } = queryHistorySchema.parse(input);
+    const query = cleanQuery(rest);
+    return this.client.request<MessageListResponse>("GET", `${phoneNumberId}/messages`, {
+      query,
+      responseType: "json"
+    });
+  }
+
+  async listByConversation(input: { phoneNumberId: string; conversationId: string; page?: number; perPage?: number }): Promise<MessageListResponse> {
+    const { phoneNumberId, conversationId, page, perPage } = input;
+    return this.query({ phoneNumberId, conversationId, page, perPage });
   }
 }

@@ -7,7 +7,7 @@ export type MessageStatus = "accepted" | "held_for_quality_assessment";
  */
 export interface MessageContact {
   input: string;
-  wa_id: string;
+  waId: string;
 }
 
 /**
@@ -16,7 +16,7 @@ export interface MessageContact {
  */
 export interface MessageInfo {
   id: string;
-  message_status?: MessageStatus;
+  messageStatus?: MessageStatus;
 }
 
 /**
@@ -24,7 +24,7 @@ export interface MessageInfo {
  * @category Messages
  */
 export interface SendMessageResponse {
-  messaging_product: "whatsapp";
+  messagingProduct: "whatsapp";
   contacts: MessageContact[];
   messages: MessageInfo[];
 }
@@ -51,11 +51,11 @@ export interface MediaUploadResponse {
 
 /** Metadata returned by GET /<MEDIA_ID>. */
 export interface MediaMetadataResponse {
-  messaging_product: "whatsapp";
+  messagingProduct: "whatsapp";
   url: string;
-  mime_type: string;
+  mimeType: string;
   sha256: string;
-  file_size: string;
+  fileSize: string;
   id: string;
 }
 
@@ -72,11 +72,11 @@ export interface MessageTemplate {
   language?: string;
   status?: TemplateStatus | string;
   components?: Array<Record<string, unknown>>;
-  quality_score_category?: string | null;
+  qualityScoreCategory?: string | null;
   warnings?: unknown;
-  previous_category?: string | null;
-  library_template_name?: string | null;
-  last_updated_time?: string;
+  previousCategory?: string | null;
+  libraryTemplateName?: string | null;
+  lastUpdatedTime?: string;
 }
 
 /** Response from listing templates on a WABA. */
@@ -102,12 +102,110 @@ export type PhoneNumberDeregisterResponse = GraphSuccessResponse;
 export type PhoneNumberSettingsUpdateResponse = GraphSuccessResponse;
 export type BusinessProfileUpdateResponse = GraphSuccessResponse;
 
+export interface ListMeta {
+  page?: number;
+  perPage?: number;
+  totalPages?: number;
+  totalCount?: number;
+  [key: string]: unknown;
+}
+
+export interface ListResponse<T> {
+  data: T[];
+  meta?: ListMeta;
+  [key: string]: unknown;
+}
+
+export interface ConversationRecord {
+  id: string;
+  phoneNumber?: string;
+  status?: string;
+  lastActiveAt?: string;
+  contactName?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export type ConversationListResponse = ListResponse<ConversationRecord>;
+
+export interface MessageRecord {
+  id: string;
+  messageType?: string;
+  content?: string;
+  direction?: string;
+  status?: string;
+  createdAt?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export type MessageListResponse = ListResponse<MessageRecord>;
+
+export interface ContactRecord {
+  id: string;
+  waId: string;
+  profileName?: string;
+  displayName?: string;
+  whatsappUserId?: string;
+  customerId?: string | null;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export type ContactListResponse = ListResponse<ContactRecord>;
+
+export interface CallingWeeklyHoursEntry {
+  dayOfWeek: string;
+  openTime: string;
+  closeTime: string;
+  [key: string]: unknown;
+}
+
+export interface CallingHolidayScheduleEntry {
+  date: string;
+  startTime: string;
+  endTime: string;
+  [key: string]: unknown;
+}
+
+export interface CallingSipServer {
+  hostname: string;
+  port?: number;
+  requestUriUserParams?: Record<string, string>;
+  sipUserPassword?: string;
+  [key: string]: unknown;
+}
+
+export interface CallingSipSettings {
+  status?: string;
+  servers?: CallingSipServer[];
+  [key: string]: unknown;
+}
+
+export interface CallingHoursSettings {
+  status?: string;
+  timezoneId?: string;
+  weeklyOperatingHours?: CallingWeeklyHoursEntry[];
+  holidaySchedule?: CallingHolidayScheduleEntry[];
+  [key: string]: unknown;
+}
+
+export interface CallingSettings {
+  status?: string;
+  callIconVisibility?: string;
+  callHours?: CallingHoursSettings;
+  callbackPermissionStatus?: string;
+  sip?: CallingSipSettings;
+  [key: string]: unknown;
+}
+
 /** Settings returned by GET /<PHONE_NUMBER_ID>/settings. */
 export interface PhoneNumberSettingsResponse {
-  fallback_language?: string;
-  identity_change?: Record<string, unknown>;
-  messaging_limit?: Record<string, unknown>;
-  two_step_verification?: Record<string, unknown>;
+  fallbackLanguage?: string;
+  identityChange?: Record<string, unknown>;
+  messagingLimit?: Record<string, unknown>;
+  twoStepVerification?: Record<string, unknown>;
+  calling?: CallingSettings;
   [key: string]: unknown;
 }
 
@@ -119,8 +217,8 @@ export interface BusinessProfileEntry {
   email?: string;
   websites?: string[];
   vertical?: string;
-  profile_picture_url?: string;
-  profile_picture_handle?: string;
+  profilePictureUrl?: string;
+  profilePictureHandle?: string;
   [key: string]: unknown;
 }
 
@@ -130,14 +228,66 @@ export interface BusinessProfileGetResponse {
   paging?: GraphPaging;
 }
 
-/** Standard Graph error envelope. */
+export interface CallConnectResponse {
+  messagingProduct: "whatsapp";
+  calls?: Array<{ id: string; [key: string]: unknown }>;
+  [key: string]: unknown;
+}
+
+export type CallActionResponse = GraphSuccessResponse & {
+  messagingProduct?: "whatsapp";
+  [key: string]: unknown;
+};
+
+export interface CallPermissionLimit {
+  timePeriod: string;
+  maxAllowed: number;
+  currentUsage: number;
+  limitExpirationTime?: number;
+  [key: string]: unknown;
+}
+
+export interface CallPermissionAction {
+  actionName: string;
+  canPerformAction: boolean;
+  limits?: CallPermissionLimit[];
+  [key: string]: unknown;
+}
+
+export interface CallPermissionsResponse {
+  messagingProduct: "whatsapp";
+  permission: {
+    status: string;
+    expirationTime?: number;
+    [key: string]: unknown;
+  };
+  actions?: CallPermissionAction[];
+  [key: string]: unknown;
+}
+
+export interface CallRecord {
+  id: string;
+  direction?: string;
+  status?: string;
+  durationSeconds?: number;
+  startedAt?: string;
+  endedAt?: string;
+  whatsappConversationId?: string;
+  whatsappContactId?: string;
+  [key: string]: unknown;
+}
+
+export type CallListResponse = ListResponse<CallRecord>;
+
+/** Standard Graph error envelope (camelCase variant). */
 export interface GraphErrorResponse {
   error: {
     message: string;
     type: string;
     code: number;
-    error_subcode?: number;
-    fbtrace_id?: string;
+    errorSubcode?: number;
+    fbtraceId?: string;
+    errorData?: Record<string, unknown>;
     [key: string]: unknown;
   };
 }

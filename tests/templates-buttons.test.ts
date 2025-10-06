@@ -34,7 +34,7 @@ describe("Template buttons validation", () => {
           type: "BUTTONS",
           buttons: [
             { type: "URL", text: "Open", url: "https://x.test" },
-            { type: "PHONE_NUMBER", text: "Call", phone_number: "15550000000" },
+            { type: "PHONE_NUMBER", text: "Call", phoneNumber: "15550000000" },
             { type: "QUICK_REPLY", text: "Stop" },
             { type: "QUICK_REPLY", text: "Pause" }
           ]
@@ -90,7 +90,7 @@ describe("Template buttons validation", () => {
       ...base,
       components: [
         { type: "BODY", text: "Body" },
-        { type: "BUTTONS", buttons: [{ type: "FLOW", text: "Start", flow_id: "123" }] }
+        { type: "BUTTONS", buttons: [{ type: "FLOW", text: "Start", flowId: "123" }] }
       ]
     });
     expect(ok).toBeTruthy();
@@ -135,8 +135,8 @@ describe("Template buttons validation", () => {
           {
             type: "BUTTONS",
             buttons: [
-              { type: "PHONE_NUMBER", text: "Call", phone_number: "1" },
-              { type: "PHONE_NUMBER", text: "Call2", phone_number: "2" }
+              { type: "PHONE_NUMBER", text: "Call", phoneNumber: "1" },
+              { type: "PHONE_NUMBER", text: "Call2", phoneNumber: "2" }
             ]
           }
         ]

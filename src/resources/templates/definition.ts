@@ -38,13 +38,13 @@ function extractPlaceholders(text: string) {
 }
 
 const HeaderTextExampleSchema = z
-  .object({ header_text: z.array(z.string().min(1)).min(1) })
+  .object({ headerText: z.array(z.string().min(1)).min(1) })
   .or(
     z.object({
-      header_text_named_params: z
+      headerTextNamedParams: z
         .array(
           z.object({
-            param_name: z.string().regex(/^[a-z0-9_]+$/),
+            paramName: z.string().regex(/^[a-z0-9_]+$/),
             example: z.string().min(1)
           })
         )
@@ -53,13 +53,13 @@ const HeaderTextExampleSchema = z
   );
 
 const BodyTextExampleSchema = z
-  .object({ body_text: z.array(z.array(z.string().min(1)).min(1)).min(1) })
+  .object({ bodyText: z.array(z.array(z.string().min(1)).min(1)).min(1) })
   .or(
     z.object({
-      body_text_named_params: z
+      bodyTextNamedParams: z
         .array(
           z.object({
-            param_name: z.string().regex(/^[a-z0-9_]+$/),
+            paramName: z.string().regex(/^[a-z0-9_]+$/),
             example: z.string().min(1)
           })
         )
@@ -91,41 +91,41 @@ const HeaderTextSchema = z
     if (!value.example) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "header_text example is required when placeholders are present",
+        message: "headerText example is required when placeholders are present",
         path: ["example"]
       });
       return;
     }
 
     if (positionalCount > 0) {
-      if (!("header_text" in value.example)) {
+      if (!("headerText" in value.example)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "header_text array must be provided for positional placeholders",
+          message: "headerText array must be provided for positional placeholders",
           path: ["example"]
         });
-      } else if (value.example.header_text.length !== positionalCount) {
+      } else if (value.example.headerText.length !== positionalCount) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "header_text example count must match number of placeholders",
-          path: ["example", "header_text"]
+          message: "headerText example count must match number of placeholders",
+          path: ["example", "headerText"]
         });
       }
     } else {
-      if (!("header_text_named_params" in value.example)) {
+      if (!("headerTextNamedParams" in value.example)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "header_text_named_params must be provided for named placeholders",
+          message: "headerTextNamedParams must be provided for named placeholders",
           path: ["example"]
         });
       } else {
-        const provided = new Set(value.example.header_text_named_params.map((entry) => entry.param_name));
+        const provided = new Set(value.example.headerTextNamedParams.map((entry) => entry.paramName));
         for (const key of namedKeys) {
           if (!provided.has(key)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: `Missing example for named parameter ${key}`,
-              path: ["example", "header_text_named_params"]
+              path: ["example", "headerTextNamedParams"]
             });
           }
         }
@@ -136,7 +136,7 @@ const HeaderTextSchema = z
 const HeaderMediaSchema = z.object({
   type: z.literal("HEADER"),
   format: z.enum(["IMAGE", "VIDEO", "DOCUMENT"]),
-  example: z.object({ header_handle: z.array(z.string().min(1)).min(1) })
+  example: z.object({ headerHandle: z.array(z.string().min(1)).min(1) })
 });
 
 const HeaderLocationSchema = z.object({
@@ -167,44 +167,44 @@ const BodyComponentSchema = z
     if (!value.example) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "body_text example is required when placeholders are present",
+        message: "bodyText example is required when placeholders are present",
         path: ["example"]
       });
       return;
     }
 
     if (positionalCount > 0) {
-      if (!("body_text" in value.example)) {
+      if (!("bodyText" in value.example)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "body_text example must be provided for positional placeholders",
+          message: "bodyText example must be provided for positional placeholders",
           path: ["example"]
         });
       } else {
-        const firstRow = value.example.body_text[0];
+        const firstRow = value.example.bodyText[0];
         if (!firstRow || firstRow.length !== positionalCount) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "body_text example count must match number of placeholders",
-            path: ["example", "body_text"]
+            message: "bodyText example count must match number of placeholders",
+            path: ["example", "bodyText"]
           });
         }
       }
     } else {
-      if (!("body_text_named_params" in value.example)) {
+      if (!("bodyTextNamedParams" in value.example)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "body_text_named_params must be provided for named placeholders",
+          message: "bodyTextNamedParams must be provided for named placeholders",
           path: ["example"]
         });
       } else {
-        const provided = new Set(value.example.body_text_named_params.map((entry) => entry.param_name));
+        const provided = new Set(value.example.bodyTextNamedParams.map((entry) => entry.paramName));
         for (const key of namedKeys) {
           if (!provided.has(key)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: `Missing example for named parameter ${key}`,
-              path: ["example", "body_text_named_params"]
+              path: ["example", "bodyTextNamedParams"]
             });
           }
         }
@@ -221,17 +221,17 @@ type ButtonsComponent = {
   type: "BUTTONS";
   buttons: Array<
     | { type: "QUICK_REPLY"; text: string }
-    | { type: "PHONE_NUMBER"; text: string; phone_number: string }
+    | { type: "PHONE_NUMBER"; text: string; phoneNumber: string }
     | { type: "URL"; text: string; url: string; example?: string[] }
     | { type: "COPY_CODE"; example: string }
     | {
         type: "FLOW";
         text?: string;
-        flow_id?: string;
-        flow_name?: string;
-        flow_json?: string;
-        flow_action?: "navigate" | "data_exchange";
-        navigate_screen?: string;
+        flowId?: string;
+        flowName?: string;
+        flowJson?: string;
+        flowAction?: "navigate" | "data_exchange";
+        navigateScreen?: string;
         icon?: "DOCUMENT" | "PROMOTION" | "REVIEW";
       }
   >;
@@ -249,7 +249,7 @@ const TemplateComponentSchema = z.union([
         .array(
           z.discriminatedUnion("type", [
             z.object({ type: z.literal("QUICK_REPLY"), text: z.string().min(1).max(25) }),
-            z.object({ type: z.literal("PHONE_NUMBER"), text: z.string().min(1).max(25), phone_number: z.string().min(1).max(20) }),
+            z.object({ type: z.literal("PHONE_NUMBER"), text: z.string().min(1).max(25), phoneNumber: z.string().min(1).max(20) }),
             z.object({
               type: z.literal("URL"),
               text: z.string().min(1).max(25),
@@ -266,17 +266,17 @@ const TemplateComponentSchema = z.union([
               .object({
                 type: z.literal("FLOW"),
                 text: z.string().min(1).max(25).optional(),
-                flow_id: z.string().min(1).optional(),
-                flow_name: z.string().min(1).optional(),
-                flow_json: z.string().min(1).optional(),
-                flow_action: z.enum(["navigate", "data_exchange"]).optional(),
-                navigate_screen: z.string().optional(),
+                flowId: z.string().min(1).optional(),
+                flowName: z.string().min(1).optional(),
+                flowJson: z.string().min(1).optional(),
+                flowAction: z.enum(["navigate", "data_exchange"]).optional(),
+                navigateScreen: z.string().optional(),
                 icon: z.enum(["DOCUMENT", "PROMOTION", "REVIEW"]).optional()
               })
               .superRefine((v, ctx) => {
-                const keys = [v.flow_id, v.flow_name, v.flow_json].filter(Boolean).length;
+                const keys = [v.flowId, v.flowName, v.flowJson].filter(Boolean).length;
                 if (keys !== 1) {
-                  ctx.addIssue({ code: z.ZodIssueCode.custom, message: "FLOW button requires exactly one of flow_id, flow_name, or flow_json" });
+                  ctx.addIssue({ code: z.ZodIssueCode.custom, message: "FLOW button requires exactly one of flowId, flowName, or flowJson" });
                 }
               })
           ])

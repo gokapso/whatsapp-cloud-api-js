@@ -71,24 +71,74 @@ describe("Phone Numbers API", () => {
     expectTypeOf(result).toEqualTypeOf<{ success: true }>();
   });
 
-  it("settings.get fetches settings", async () => {
-    const { fetchMock, calls } = setupFetch({ fallback_language: "en_US" });
+  it("settings.get fetches settings with calling payload", async () => {
+    const { fetchMock, calls } = setupFetch({
+      fallback_language: "en_US",
+      calling: {
+        status: "ENABLED",
+        call_icon_visibility: "DEFAULT",
+        call_hours: {
+          status: "ENABLED",
+          timezone_id: "America/Manaus",
+          weekly_operating_hours: [
+            { day_of_week: "MONDAY", open_time: "0400", close_time: "1020" }
+          ]
+        }
+      }
+    });
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
 
     const res = await client.phoneNumbers.settings.get({ phoneNumberId: "123" });
     expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/123/settings");
-    expect(res).toMatchObject({ fallback_language: "en_US" });
+    expect(res).toMatchObject({ fallbackLanguage: "en_US", calling: { status: "ENABLED" } });
+    expect(res.calling?.callHours?.weeklyOperatingHours?.[0]?.dayOfWeek).toBe("MONDAY");
     expectTypeOf(res).not.toBeAny();
-    expectTypeOf(res).toMatchTypeOf<{ fallback_language?: string }>();
+    expectTypeOf(res.calling?.callHours?.weeklyOperatingHours?.[0]?.openTime).toBeString();
   });
 
-  it("settings.update posts arbitrary fields", async () => {
+  it("settings.update posts calling configuration", async () => {
     const { fetchMock, calls } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
 
-    const result = await client.phoneNumbers.settings.update({ phoneNumberId: "123", fallback_language: "es_ES" });
+    const result = await client.phoneNumbers.settings.update({
+      phoneNumberId: "123",
+      calling: {
+        status: "ENABLED",
+        callIconVisibility: "DEFAULT",
+        callHours: {
+          status: "ENABLED",
+          timezoneId: "America/Manaus",
+          weeklyOperatingHours: [{ dayOfWeek: "TUESDAY", openTime: "0108", closeTime: "1020" }]
+        },
+        callbackPermissionStatus: "ENABLED",
+        sip: {
+          status: "ENABLED",
+          servers: [{ hostname: "sip.example.com", port: 5060, requestUriUserParams: { KEY1: "VALUE1" } }]
+        }
+      }
+    });
     expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/123/settings");
-    expect(JSON.parse(String(calls[0]?.init.body))).toMatchObject({ fallback_language: "es_ES" });
+    expect(JSON.parse(String(calls[0]?.init.body))).toMatchObject({
+      calling: {
+        status: "ENABLED",
+        call_icon_visibility: "DEFAULT",
+        call_hours: {
+          weekly_operating_hours: [
+            { day_of_week: "TUESDAY", open_time: "0108", close_time: "1020" }
+          ]
+        },
+        callback_permission_status: "ENABLED",
+        sip: {
+          servers: [
+            {
+              hostname: "sip.example.com",
+              port: 5060,
+              request_uri_user_params: { KEY1: "VALUE1" }
+            }
+          ]
+        }
+      }
+    });
     expect(result).toEqual({ success: true });
     expectTypeOf(result).not.toBeAny();
     expectTypeOf(result).toEqualTypeOf<{ success: true }>();

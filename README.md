@@ -7,14 +7,10 @@ TypeScript client for the WhatsApp Business Cloud API. It provides typed request
 
 Optionally, you can route your calls through [Kapso](https://kapso.ai/)’s proxy by changing the `baseUrl` and auth header.
 
-## Features
-- Configurable base URL and auth: direct Meta Graph or Kapso proxy
-- Messages: text, media, location, contacts, reaction, templates, and rich interactive helpers (buttons, lists, products, flows, address, location request, call permission)
-- Templates: creation (strict validation for header/body/footer/buttons), send‑time parameter builders
-- Media: upload/get/delete
-- Phone numbers: request/verify code, register/deregister; settings and business profile
-- Webhooks: X‑Hub‑Signature‑256 verification helper
-- Modern build (ESM+CJS), TypeScript types, Zod validation
+## Choose your setup
+
+1. **Meta setup (~ 1 hour)** – Create a Meta WhatsApp app, generate a system or business token, and link a WhatsApp Business phone number in Meta Business Manager.
+2. **Kapso proxy (~ 2 minutes)** – Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
 
 ## Install
 
@@ -22,7 +18,7 @@ Optionally, you can route your calls through [Kapso](https://kapso.ai/)’s prox
 npm install @kapso/whatsapp-cloud-api
 ```
 
-## Quick Start
+## Quick start
 
 ```ts
 import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
@@ -41,7 +37,19 @@ await client.messages.sendText({
 });
 ```
 
-## API Surface (overview)
+## Features
+- Configurable base URL and auth: direct Meta Graph or Kapso proxy
+- Messages: text, media, location, contacts, reaction, templates, and rich interactive helpers (buttons, lists, products, flows, address, location request, call permission)
+- Templates: creation (strict validation for header/body/footer/buttons), send‑time parameter builders
+- Media: upload/get/delete
+- Phone numbers: request/verify code, register/deregister; settings and business profile
+- Historical data (Kapso proxy): conversations, message history, contacts, and call logs
+- Webhooks: X‑Hub‑Signature‑256 verification helper
+- Modern build (ESM+CJS), TypeScript types, Zod validation
+
+## API surface
+
+### Core (Meta access token)
 
 - `client.messages` — send text/media/interactive/templates and mark messages as read
 - `client.templates` — list/create/delete templates on your WABA
@@ -49,9 +57,17 @@ await client.messages.sendText({
 - `client.phoneNumbers` — request/verify code, register/deregister, settings, business profile
 - `verifySignature` — verify webhook signatures (app secret)
 - `TemplateDefinition` — strict template creation builders
-- `buildTemplateSendPayload` — build send‑time template payloads
+- `buildTemplateSendPayload` — build send-time template payloads
 
-## Using the [Kapso](https://kapso.ai/) Proxy (optional)
+### Kapso proxy extras
+ Requires `baseUrl` and `kapsoApiKey`.
+
+- `client.conversations` — list/get/update conversations across your project
+- `client.messages.query` / `listByConversation` — pull stored message history
+- `client.contacts` — list/get/update contacts, with `customerId` or `hasCustomer` filters
+- `client.calls` — initiate calls plus historic call logs (`list`/`get`) and permission helpers
+
+## Using the Kapso Proxy
 
 To use Kapso’s proxy, set the client base URL and API key:
 
@@ -63,7 +79,7 @@ const client = new WhatsAppClient({
 ```
 
 Notes:
-- Media GET/DELETE requires `phone_number_id` query on the proxy.
+- Media GET/DELETE requires `phoneNumberId` query on the proxy.
 - You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
 
 ### Why [Kapso](https://kapso.ai/)?
@@ -77,7 +93,7 @@ Notes:
 - Multi‑tenant by design — onboard thousands of customers safely.
 - And more.
 
-## Sending Messages
+## Sending messages
 
 Below are concise examples for common message types. Assume `client` is created as shown above.
 
@@ -143,7 +159,7 @@ await client.messages.sendContacts({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
   contacts: [
-    { name: { formatted_name: "John Doe" }, phones: [{ phone: "+15551234567", type: "WORK" }] }
+    { name: { formattedName: "John Doe" }, phones: [{ phone: "+15551234567", type: "WORK" }] }
   ]
 });
 ```
@@ -153,11 +169,20 @@ await client.messages.sendContacts({
 await client.messages.sendReaction({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  reaction: { message_id: "wamid......", emoji: "😀" }
+  reaction: { messageId: "wamid......", emoji: "😀" }
 });
 ```
 
-### Interactive Buttons
+### Mark read & typing indicator
+```ts
+await client.messages.markRead({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  messageId: "wamid......",
+  typingIndicator: { type: "text" }
+});
+```
+
+### Interactive buttons
 ```ts
 await client.messages.sendInteractiveButtons({
   phoneNumberId: "<PHONE_NUMBER_ID>",
@@ -167,6 +192,46 @@ await client.messages.sendInteractiveButtons({
   footerText: "Footer",
   buttons: [ { id: "accept", title: "Accept" }, { id: "decline", title: "Decline" } ]
 });
+```
+
+## Query history & contacts (Kapso proxy)
+
+When you point the client to Kapso’s proxy (`baseUrl: "https://app.kapso.ai/api/meta"` plus `kapsoApiKey`), you can query stored data in addition to sending messages.
+
+```ts
+const client = new WhatsAppClient({
+  baseUrl: "https://app.kapso.ai/api/meta",
+  kapsoApiKey: process.env.KAPSO_API_KEY!,
+});
+
+// Conversations
+const conversations = await client.conversations.list({
+  phoneNumberId: "647015955153740",
+  status: "active",
+  perPage: 50
+});
+
+const conversation = await client.conversations.get({ conversationId: conversations.data[0].id });
+await client.conversations.updateStatus({ conversationId: conversation.id, status: "ended" });
+
+// Message history
+const history = await client.messages.query({
+  phoneNumberId: "647015955153740",
+  direction: "inbound",
+  since: "2025-01-01T00:00:00Z"
+});
+
+// Contacts
+const contacts = await client.contacts.list({ phoneNumberId: "647015955153740", customerId: "123" });
+await client.contacts.update({
+  phoneNumberId: "647015955153740",
+  waId: contacts.data[0].waId,
+  metadata: { tags: ["vip"], source: "import" }
+});
+
+// Call logs
+const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", perPage: 20 });
+const call = await client.calls.get({ phoneNumberId: "647015955153740", callId: calls.data[0].id });
 ```
 
 ## Templates
@@ -181,8 +246,8 @@ const templateDefinition = TemplateDefinition.buildTemplateDefinition({
   language: "en_US",
   category: "MARKETING",
   components: [
-    { type: "HEADER", format: "TEXT", text: "Our {{1}} is on!", example: { header_text: ["Summer Sale"] } },
-    { type: "BODY", text: "Shop now through {{1}} using code {{2}}", example: { body_text: [["Aug 31", "SALE25"]] } },
+    { type: "HEADER", format: "TEXT", text: "Our {{1}} is on!", example: { headerText: ["Summer Sale"] } },
+    { type: "BODY", text: "Shop now through {{1}} using code {{2}}", example: { bodyText: [["Aug 31", "SALE25"]] } },
     { type: "FOOTER", text: "Tap a button below" },
     { type: "BUTTONS", buttons: [ { type: "QUICK_REPLY", text: "Unsubscribe" }, { type: "URL", text: "Shop", url: "https://store.example/promo" } ] }
   ],
@@ -207,7 +272,7 @@ const templatePayload = buildTemplateSendPayload({
   language: "en_US",
   header: { type: "image", image: { link: "https://cdn.example/banner.jpg" } },
   body: [ { type: "text", text: "Aug 31" }, { type: "text", text: "SALE25" } ],
-  buttons: [ { type: "button", sub_type: "quick_reply", index: 0, parameters: [{ type: "payload", payload: "STOP" }] } ],
+  buttons: [ { type: "button", subType: "quick_reply", index: 0, parameters: [{ type: "payload", payload: "STOP" }] } ],
 });
 
 await client.messages.sendTemplate({
@@ -222,17 +287,17 @@ await client.messages.sendTemplate({
 ```ts
 const imageBlob = new Blob([/* binary data */], { type: "image/png" });
 await client.media.upload({ phoneNumberId: "<PHONE_NUMBER_ID>", type: "image", file: imageBlob, fileName: "photo.png" });
-const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" }); // Kapso requires phone_number_id
+const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" }); // Kapso requires phoneNumberId
 await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" });
 ```
 
-## Phone Numbers
+## Phone numbers
 
 ```ts
 await client.phoneNumbers.requestCode({ phoneNumberId: "<PHONE_NUMBER_ID>", codeMethod: "SMS", language: "en_US" });
 await client.phoneNumbers.verifyCode({ phoneNumberId: "<PHONE_NUMBER_ID>", code: "123456" });
 await client.phoneNumbers.register({ phoneNumberId: "<PHONE_NUMBER_ID>", pin: "000111" });
-await client.phoneNumbers.settings.update({ phoneNumberId: "<PHONE_NUMBER_ID>", fallback_language: "en_US" });
+await client.phoneNumbers.settings.update({ phoneNumberId: "<PHONE_NUMBER_ID>", fallbackLanguage: "en_US" });
 await client.phoneNumbers.businessProfile.update({ phoneNumberId: "<PHONE_NUMBER_ID>", about: "My Shop", websites: ["https://example.com"] });
 ```
 
@@ -255,13 +320,13 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
 });
 ```
 
-## Typed Responses
+## Typed responses
 
 - All helpers return typed payloads (e.g., `SendMessageResponse`, `MediaUploadResponse`, etc.).
 - You can also call the low-level client with typing:
 
 ```ts
-const res = await client.request<MyType>("GET", "<path>", { responseType: "json" });
+const response = await client.request<MyType>("GET", "<path>", { responseType: "json" });
 ```
 
 ## Runtime & Compatibility
@@ -269,7 +334,7 @@ const res = await client.request<MyType>("GET", "<path>", { responseType: "json"
 - Requires Node.js 20.19+ or any environment with WHATWG `fetch`/`FormData` globals.
 - ESM and CJS builds are provided. The package is side-effect free and supports tree-shaking.
 
-## Error Handling
+## Error handling
 
 When a response is not OK, the client throws an `Error` whose message includes the HTTP status and response text, e.g.:
 

@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import { WhatsAppClient } from "../src";
 import type { TemplateCreateResponse, TemplateDeleteResponse, TemplateListResponse } from "../src";
 
-const sampleListResponse: TemplateListResponse = {
+const graphListResponse = {
   data: [
     {
       id: "564750795574598",
@@ -15,10 +15,25 @@ const sampleListResponse: TemplateListResponse = {
     }
   ],
   paging: { cursors: { before: "", after: "" } }
+} as const;
+
+const expectedListResponse: TemplateListResponse = {
+  data: [
+    {
+      id: "564750795574598",
+      name: "order_confirmation",
+      category: "UTILITY",
+      language: "en_US",
+      status: "APPROVED",
+      components: [],
+      qualityScoreCategory: "GREEN"
+    }
+  ],
+  paging: { cursors: { before: "", after: "" } }
 };
 
 describe("Templates resource", () => {
-  const setupFetch = (payload: unknown = sampleListResponse) => {
+  const setupFetch = (payload: unknown = graphListResponse) => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
     const fetchMock: typeof fetch = async (input, init) => {
       const url = typeof input === "string"
@@ -45,7 +60,7 @@ describe("Templates resource", () => {
       status: "APPROVED"
     });
 
-    expect(templates).toEqual(sampleListResponse);
+    expect(templates).toEqual(expectedListResponse);
     expectTypeOf(templates).not.toBeAny();
     expectTypeOf(templates).toMatchTypeOf<TemplateListResponse>();
     expect(calls[0]?.url).toBe(
@@ -68,12 +83,12 @@ describe("Templates resource", () => {
           type: "HEADER",
           format: "TEXT",
           text: "Our {{1}} is on!",
-          example: { header_text: ["Summer Sale"] }
+          example: { headerText: ["Summer Sale"] }
         },
         {
           type: "BODY",
           text: "Shop now through {{1}} and use code {{2}} to get {{3}} off of all merchandise.",
-          example: { body_text: [["the end of August", "25OFF", "25%"]] }
+          example: { bodyText: [["the end of August", "25OFF", "25%"]] }
         }
       ]
     });

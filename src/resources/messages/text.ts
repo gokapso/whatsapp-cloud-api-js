@@ -18,7 +18,7 @@ export class TextMessageSender {
       type: "text",
       text: {
         body: parsed.body,
-        ...(parsed.previewUrl !== undefined ? { preview_url: parsed.previewUrl } : {})
+        ...(parsed.previewUrl !== undefined ? { previewUrl: parsed.previewUrl } : {})
       }
     });
 

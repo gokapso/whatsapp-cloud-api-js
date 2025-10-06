@@ -85,7 +85,7 @@ function buildMediaQuery(phoneNumberId?: string) {
     return undefined;
   }
 
-  return { phone_number_id: phoneNumberId };
+  return { phoneNumberId };
 }
 
 function toBlob(uploadable: Uploadable): Blob {

@@ -25,14 +25,62 @@ const verifyCodeSchema = z.object({
 const registerSchema = z.object({
   phoneNumberId: z.string().min(1),
   pin: z.string().min(1),
-  data_localization_region: z.string().optional()
+  dataLocalizationRegion: z.string().optional()
 });
 
 const deregisterSchema = z.object({ phoneNumberId: z.string().min(1) });
 
-const settingsGetSchema = z.object({ phoneNumberId: z.string().min(1) });
+const settingsGetSchema = z.object({
+  phoneNumberId: z.string().min(1),
+  includeSipCredentials: z.boolean().optional()
+});
 
-const settingsUpdateSchema = z.object({ phoneNumberId: z.string().min(1) }).catchall(z.any());
+const callingWeeklyHoursSchema = z.object({
+  dayOfWeek: z.string().min(1),
+  openTime: z.string().min(1),
+  closeTime: z.string().min(1)
+});
+
+const callingHolidayScheduleSchema = z.object({
+  date: z.string().min(1),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1)
+});
+
+const callingHoursSchema = z.object({
+  status: z.string().optional(),
+  timezoneId: z.string().optional(),
+  weeklyOperatingHours: z.array(callingWeeklyHoursSchema).optional(),
+  holidaySchedule: z.array(callingHolidayScheduleSchema).optional()
+});
+
+const callingSipServerSchema = z.object({
+  hostname: z.string().min(1),
+  port: z.number().int().optional(),
+  requestUriUserParams: z.record(z.string(), z.string()).optional(),
+  sipUserPassword: z.string().optional()
+});
+
+const callingSipSchema = z.object({
+  status: z.string().optional(),
+  servers: z.array(callingSipServerSchema).optional()
+});
+
+const callingSettingsSchema = z.object({
+  status: z.string().optional(),
+  callIconVisibility: z.string().optional(),
+  callHours: callingHoursSchema.optional(),
+  callbackPermissionStatus: z.string().optional(),
+  sip: callingSipSchema.optional()
+});
+
+const settingsUpdateSchema = z
+  .object({
+    phoneNumberId: z.string().min(1),
+    fallbackLanguage: z.string().optional(),
+    calling: callingSettingsSchema.optional()
+  })
+  .passthrough();
 
 const businessProfileGetSchema = z.object({ phoneNumberId: z.string().min(1) });
 
@@ -43,7 +91,7 @@ const businessProfileUpdateSchema = z
     address: z.string().optional(),
     description: z.string().optional(),
     email: z.string().min(1).optional(),
-    profile_picture_url: z.string().url().optional(),
+    profilePictureUrl: z.string().url().optional(),
     websites: z.array(z.string().url()).optional(),
     vertical: z.string().optional()
   })
@@ -59,7 +107,7 @@ export class PhoneNumbersResource {
   async requestCode(input: z.infer<typeof requestCodeSchema>): Promise<PhoneNumberRequestCodeResponse> {
     const parsed = requestCodeSchema.parse(input);
     return this.client.request<PhoneNumberRequestCodeResponse>("POST", `${parsed.phoneNumberId}/request_code`, {
-      body: { code_method: parsed.codeMethod, language: parsed.language },
+      body: { codeMethod: parsed.codeMethod, language: parsed.language },
       responseType: "json"
     });
   }
@@ -74,8 +122,8 @@ export class PhoneNumbersResource {
 
   async register(input: z.infer<typeof registerSchema>): Promise<PhoneNumberRegisterResponse> {
     const parsed = registerSchema.parse(input);
-    const body: Record<string, unknown> = { messaging_product: "whatsapp", pin: parsed.pin };
-    if (parsed.data_localization_region) body.data_localization_region = parsed.data_localization_region;
+    const body: Record<string, unknown> = { messagingProduct: "whatsapp", pin: parsed.pin };
+    if (parsed.dataLocalizationRegion) body.dataLocalizationRegion = parsed.dataLocalizationRegion;
     return this.client.request<PhoneNumberRegisterResponse>("POST", `${parsed.phoneNumberId}/register`, {
       body,
       responseType: "json"
@@ -92,7 +140,9 @@ export class PhoneNumbersResource {
   readonly settings = {
     get: async (input: z.infer<typeof settingsGetSchema>): Promise<PhoneNumberSettingsResponse> => {
       const parsed = settingsGetSchema.parse(input);
+      const query = parsed.includeSipCredentials ? { includeSipCredentials: true } : undefined;
       return this.client.request<PhoneNumberSettingsResponse>("GET", `${parsed.phoneNumberId}/settings`, {
+        query,
         responseType: "json"
       });
     },
@@ -115,7 +165,7 @@ export class PhoneNumbersResource {
     update: async (input: z.infer<typeof businessProfileUpdateSchema>): Promise<BusinessProfileUpdateResponse> => {
       const { phoneNumberId, ...rest } = businessProfileUpdateSchema.parse(input);
       return this.client.request<BusinessProfileUpdateResponse>("POST", `${phoneNumberId}/whatsapp_business_profile`, {
-        body: { messaging_product: "whatsapp", ...rest },
+        body: { messagingProduct: "whatsapp", ...rest },
         responseType: "json"
       });
     }

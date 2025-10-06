@@ -2,7 +2,7 @@ import { z } from "zod";
 import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const reactionSchema = z.object({
-  message_id: z.string().min(1, "message_id is required"),
+  messageId: z.string().min(1, "messageId is required"),
   emoji: z.string().max(2).optional()
 });
 

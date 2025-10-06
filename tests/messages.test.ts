@@ -1,14 +1,20 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { WhatsAppClient } from "../src";
 
-const defaultResponse = {
+const defaultGraphResponse = {
   messaging_product: "whatsapp",
   contacts: [{ input: "15551234567", wa_id: "15551234567" }],
   messages: [{ id: "wamid.TEST", message_status: "accepted" as const }]
 } as const;
 
+const expectedClientResponse = {
+  messagingProduct: "whatsapp" as const,
+  contacts: [{ input: "15551234567", waId: "15551234567" }],
+  messages: [{ id: "wamid.TEST", messageStatus: "accepted" as const }]
+} as const;
+
 describe("Messages resource", () => {
-  const setupFetch = (payload: unknown = defaultResponse) => {
+  const setupFetch = (payload: unknown = defaultGraphResponse) => {
     const responses: Array<{ url: string; init: RequestInit }> = [];
     const fetchMock: typeof fetch = async (input, init) => {
       const url = typeof input === "string"
@@ -49,18 +55,18 @@ describe("Messages resource", () => {
         preview_url: false
       }
     });
-    expect(result).toEqual(defaultResponse);
+    expect(result).toEqual(expectedClientResponse);
     expectTypeOf(result).not.toBeAny();
-    expectTypeOf(result.messaging_product).toEqualTypeOf<"whatsapp">();
+    expectTypeOf(result.messagingProduct).toEqualTypeOf<"whatsapp">();
     const message = result.messages[0];
     expect(message).toBeDefined();
     expectTypeOf(message).not.toBeAny();
     expectTypeOf(message).toMatchTypeOf<{
       id: string;
-      message_status?: "accepted" | "held_for_quality_assessment";
+      messageStatus?: "accepted" | "held_for_quality_assessment";
     }>();
     // @ts-expect-error invalid status should not be assignable once types exist
-    result.messages[0].message_status = "invalid_status";
+    result.messages[0].messageStatus = "invalid_status";
   });
 
   it("fails validation when text body missing", async () => {
@@ -147,7 +153,7 @@ describe("Messages resource", () => {
     await client.messages.sendReaction({
       phoneNumberId: "123",
       to: "15551234567",
-      reaction: { message_id: "wamid.XYZ", emoji: "😀" }
+      reaction: { messageId: "wamid.XYZ", emoji: "😀" }
     });
 
     const parsedBody = JSON.parse(String(responses[0]?.init.body));
@@ -402,7 +408,7 @@ describe("Messages resource", () => {
       to: "15551234567",
       contacts: [
         {
-          name: { formatted_name: "John Doe" },
+          name: { formattedName: "John Doe" },
           phones: [{ phone: "+15551234567", type: "WORK" }]
         }
       ]
@@ -468,5 +474,21 @@ describe("Messages resource", () => {
     expect(result).toEqual({ success: true });
     expectTypeOf(result).not.toBeAny();
     expectTypeOf(result).toEqualTypeOf<{ success: true }>();
+  });
+
+  it("marks a message as read and sets typing indicator", async () => {
+    const { fetchMock, responses } = setupFetch({ success: true });
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.markRead({
+      phoneNumberId: "123",
+      messageId: "wamid.TYPING",
+      typingIndicator: { type: "text" }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      typing_indicator: { type: "text" }
+    });
   });
 });

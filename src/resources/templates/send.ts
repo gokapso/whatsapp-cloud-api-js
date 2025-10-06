@@ -37,43 +37,43 @@ const bodyParamSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }),
   z.object({
     type: z.literal("currency"),
-    currency: z.object({ fallback_value: z.string(), code: z.string().min(1), amount_1000: z.number().int() })
+    currency: z.object({ fallbackValue: z.string(), code: z.string().min(1), amount1000: z.number().int() })
   }),
-  z.object({ type: z.literal("date_time"), date_time: z.object({ fallback_value: z.string() }) })
+  z.object({ type: z.literal("date_time"), dateTime: z.object({ fallbackValue: z.string() }) })
 ]);
 
 // Button parameters
 const buttonQuickReplySchema = z.object({
   type: z.literal("button"),
-  sub_type: z.literal("quick_reply"),
+  subType: z.literal("quick_reply"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
   parameters: z.array(z.object({ type: z.literal("payload"), payload: z.string().min(1) })).min(1)
 });
 
 const buttonUrlSchema = z.object({
   type: z.literal("button"),
-  sub_type: z.literal("url"),
+  subType: z.literal("url"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
   parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1) })).min(1)
 });
 
 const buttonPhoneSchema = z.object({
   type: z.literal("button"),
-  sub_type: z.literal("phone_number"),
+  subType: z.literal("phone_number"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
   parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1) })).optional()
 });
 
 const buttonCopyCodeSchema = z.object({
   type: z.literal("button"),
-  sub_type: z.literal("copy_code"),
+  subType: z.literal("copy_code"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
   parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1).max(15) })).min(1)
 });
 
 const buttonFlowSchema = z.object({
   type: z.literal("button"),
-  sub_type: z.literal("flow"),
+  subType: z.literal("flow"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
   parameters: z.array(z.object({ type: z.literal("payload"), payload: z.any() })).optional()
 });

@@ -3,6 +3,10 @@ import { MediaResource } from "./resources/media";
 import { TemplatesResource } from "./resources/templates";
 import { PhoneNumbersResource } from "./resources/phone-numbers";
 import { parseJsonResponse } from "./resources/shared";
+import { toSnakeCaseDeep } from "./utils/case";
+import { CallsResource } from "./resources/calls";
+import { ConversationsResource } from "./resources/conversations";
+import { ContactsResource } from "./resources/contacts";
 
 /**
  * Configuration for {@link WhatsAppClient}.
@@ -48,6 +52,9 @@ export class WhatsAppClient {
   public readonly media: MediaResource;
   public readonly templates: TemplatesResource;
   public readonly phoneNumbers: PhoneNumbersResource;
+  public readonly calls: CallsResource;
+  public readonly conversations: ConversationsResource;
+  public readonly contacts: ContactsResource;
   private readonly accessToken?: string;
   private readonly kapsoApiKey?: string;
   private readonly baseUrl: string;
@@ -75,6 +82,9 @@ export class WhatsAppClient {
     this.media = new MediaResource(this);
     this.templates = new TemplatesResource(this);
     this.phoneNumbers = new PhoneNumbersResource(this);
+    this.calls = new CallsResource(this);
+    this.conversations = new ConversationsResource(this);
+    this.contacts = new ContactsResource(this);
   }
 
   isKapsoProxy(): boolean {
@@ -106,7 +116,8 @@ export class WhatsAppClient {
       ) {
         init.body = body as BodyInit;
       } else {
-        init.body = JSON.stringify(body);
+        const payload = toSnakeCaseDeep(body);
+        init.body = JSON.stringify(payload);
         if (!("Content-Type" in headers)) {
           headers["Content-Type"] = "application/json";
         }
@@ -150,7 +161,8 @@ export class WhatsAppClient {
     const url = new URL(cleanedPath, ensureTrailingSlash(base));
 
     if (query) {
-      for (const [key, value] of Object.entries(query)) {
+      const normalizedQuery = toSnakeCaseDeep(query);
+      for (const [key, value] of Object.entries(normalizedQuery)) {
         if (value === undefined || value === null) {
           continue;
         }

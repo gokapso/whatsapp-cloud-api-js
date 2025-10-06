@@ -73,12 +73,12 @@ const addressSavedAddressSchema = z.object({
   id: z.string().min(1),
   value: z.object({
     name: z.string().optional(),
-    phone_number: z.string().optional(),
-    in_pin_code: z.string().optional(),
-    floor_number: z.string().optional(),
-    building_name: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    inPinCode: z.string().optional(),
+    floorNumber: z.string().optional(),
+    buildingName: z.string().optional(),
     address: z.string().optional(),
-    landmark_area: z.string().optional(),
+    landmarkArea: z.string().optional(),
     city: z.string().optional()
   }).catchall(z.unknown())
 });
@@ -86,8 +86,8 @@ const addressSavedAddressSchema = z.object({
 const addressParametersSchema = z.object({
   country: z.string().length(2),
   values: z.object({}).catchall(z.unknown()).optional(),
-  saved_addresses: z.array(addressSavedAddressSchema).optional(),
-  validation_errors: z.object({}).catchall(z.unknown()).optional()
+  savedAddresses: z.array(addressSavedAddressSchema).optional(),
+  validationErrors: z.object({}).catchall(z.unknown()).optional()
 });
 
 const addressMessageSchema = baseMessageSchema.extend({
@@ -242,8 +242,8 @@ export class InteractiveMessageSender {
     const interactive: Record<string, unknown> = {
       type: "product",
       action: {
-        catalog_id: catalogId,
-        product_retailer_id: productRetailerId
+        catalogId,
+        productRetailerId
       }
     };
 
@@ -275,11 +275,11 @@ export class InteractiveMessageSender {
       type: "product_list",
       body: { text: bodyText },
       action: {
-        catalog_id: catalogId,
+        catalogId,
         sections: sections.map((section) => ({
           title: section.title,
-          product_items: section.productItems.map((item) => ({
-            product_retailer_id: item.productRetailerId
+          productItems: section.productItems.map((item) => ({
+            productRetailerId: item.productRetailerId
           }))
         }))
       }
@@ -312,11 +312,11 @@ export class InteractiveMessageSender {
       action: {
         name: "flow",
         parameters: {
-          flow_id: parameters.flowId,
-          flow_message_version: parameters.flowMessageVersion ?? "3",
-          ...(parameters.flowToken ? { flow_token: parameters.flowToken } : {}),
-          ...(parameters.flowAction ? { flow_action: parameters.flowAction } : {}),
-          ...(parameters.flowActionPayload ? { flow_action_payload: parameters.flowActionPayload } : {})
+          flowId: parameters.flowId,
+          flowMessageVersion: parameters.flowMessageVersion ?? "3",
+          ...(parameters.flowToken ? { flowToken: parameters.flowToken } : {}),
+          ...(parameters.flowAction ? { flowAction: parameters.flowAction } : {}),
+          ...(parameters.flowActionPayload ? { flowActionPayload: parameters.flowActionPayload } : {})
         }
       }
     };
@@ -350,8 +350,8 @@ export class InteractiveMessageSender {
         parameters: {
           country: parameters.country,
           ...(parameters.values ? { values: parameters.values } : {}),
-          ...(parameters.saved_addresses ? { saved_addresses: parameters.saved_addresses } : {}),
-          ...(parameters.validation_errors ? { validation_errors: parameters.validation_errors } : {})
+          ...(parameters.savedAddresses ? { savedAddresses: parameters.savedAddresses } : {}),
+          ...(parameters.validationErrors ? { validationErrors: parameters.validationErrors } : {})
         }
       }
     };
@@ -379,7 +379,7 @@ export class InteractiveMessageSender {
       action: {
         name: "location_request_message",
         parameters: {
-          request_message: parameters.requestMessage
+          requestMessage: parameters.requestMessage
         }
       }
     };
@@ -407,8 +407,8 @@ export class InteractiveMessageSender {
       action: {
         name: "call_permission_request",
         parameters: {
-          phone_number: parameters.phoneNumber,
-          ...(parameters.callPurpose ? { call_purpose: parameters.callPurpose } : {})
+          phoneNumber: parameters.phoneNumber,
+          ...(parameters.callPurpose ? { callPurpose: parameters.callPurpose } : {})
         }
       }
     };

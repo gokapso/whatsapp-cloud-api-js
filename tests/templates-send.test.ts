@@ -61,12 +61,12 @@ describe("Template send payload builder", () => {
       name: "with_buttons",
       language: "en_US",
       buttons: [
-        { type: "button", sub_type: "quick_reply", index: 0, parameters: [{ type: "payload", payload: "STOP" }] }
+        { type: "button", subType: "quick_reply", index: 0, parameters: [{ type: "payload", payload: "STOP" }] }
       ]
     });
     expect(tpl.components[0]).toMatchObject({
       type: "button",
-      sub_type: "quick_reply",
+      subType: "quick_reply",
       index: 0
     });
   });
@@ -76,14 +76,13 @@ describe("Template send payload builder", () => {
       name: "with_url_btn",
       language: "en_US",
       buttons: [
-        { type: "button", sub_type: "url", index: 1, parameters: [{ type: "text", text: "promo2025" }] }
+        { type: "button", subType: "url", index: 1, parameters: [{ type: "text", text: "promo2025" }] }
       ]
     });
     expect(tpl.components[0]).toMatchObject({
       type: "button",
-      sub_type: "url",
+      subType: "url",
       index: 1
     });
   });
 });
-

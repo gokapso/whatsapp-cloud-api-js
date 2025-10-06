@@ -44,7 +44,7 @@ describe("WhatsAppClient config", () => {
       fetch: fetchMock
     });
 
-    await client.request("POST", "/123/messages", { body: { messaging_product: "whatsapp" } });
+    await client.request("POST", "/123/messages", { body: { messagingProduct: "whatsapp" } });
 
     expect(responses[0]?.url).toBe("https://app.kapso.ai/api/meta/v23.0/123/messages");
     expect(responses[0]?.init.headers).toMatchObject({

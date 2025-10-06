@@ -36,18 +36,18 @@ export function buildBasePayload(
   rest: Record<string, unknown>
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
-    messaging_product: "whatsapp",
-    recipient_type: input.recipientType ?? "individual",
+    messagingProduct: "whatsapp",
+    recipientType: input.recipientType ?? "individual",
     to: input.to,
     ...rest
   };
 
   if (input.contextMessageId) {
-    payload.context = { message_id: input.contextMessageId };
+    payload.context = { messageId: input.contextMessageId };
   }
 
   if (input.bizOpaqueCallbackData) {
-    payload.biz_opaque_callback_data = input.bizOpaqueCallbackData;
+    payload.bizOpaqueCallbackData = input.bizOpaqueCallbackData;
   }
 
   return payload;

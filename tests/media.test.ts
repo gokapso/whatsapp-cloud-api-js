@@ -85,12 +85,20 @@ describe("Media resource", () => {
       file_size: "1234",
       id: "MEDIA_ID"
     } as const;
+    const expected: MediaMetadataResponse = {
+      messagingProduct: "whatsapp",
+      url: "https://cdn.kapso.ai/media/123",
+      mimeType: "image/png",
+      sha256: "hash",
+      fileSize: "1234",
+      id: "MEDIA_ID"
+    };
     const { fetchMock, calls } = setupFetch({ body: JSON.stringify(metadata) });
     const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://app.kapso.ai/api/meta", fetch: fetchMock });
 
     const response = await client.media.get({ mediaId: "MEDIA_ID", phoneNumberId: "123" });
 
-    expect(response).toEqual(metadata);
+    expect(response).toEqual(expected);
     expectTypeOf(response).toMatchTypeOf<MediaMetadataResponse>();
     expect(calls[0]?.url).toBe("https://app.kapso.ai/api/meta/v23.0/MEDIA_ID?phone_number_id=123");
   });

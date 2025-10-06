@@ -1,12 +1,26 @@
+import { GraphApiError } from "../errors";
+import { toCamelCaseDeep } from "../utils/case";
+
 export async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const detail = await safeReadText(response);
-    throw new Error(`Meta API request failed with status ${response.status}: ${detail}`);
+    const text = await safeReadText(response);
+    let parsed: unknown;
+
+    if (text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = undefined;
+      }
+    }
+
+    throw GraphApiError.fromResponse(response, parsed, text);
   }
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    return response.json() as Promise<T>;
+    const json = await response.json();
+    return toCamelCaseDeep(json) as T;
   }
 
   if (response.status === 204) {
