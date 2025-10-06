@@ -73,6 +73,24 @@ describe("Conversations API", () => {
     expectTypeOf(conversation.status).toBeString();
   });
 
+  it("retrieves a single conversation when response is bare object", async () => {
+    const { fetchMock } = setupFetch({
+      id: "conv-2",
+      phone_number: "+15559876543",
+      status: "resolved"
+    });
+
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    const conversation = await client.conversations.get({ conversationId: "conv-2" });
+
+    expect(conversation).toMatchObject({
+      id: "conv-2",
+      phoneNumber: "+15559876543",
+      status: "resolved"
+    });
+  });
+
   it("updates conversation status", async () => {
     const { fetchMock, calls } = setupFetch({ success: true });
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });

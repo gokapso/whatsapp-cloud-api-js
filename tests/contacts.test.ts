@@ -49,6 +49,26 @@ describe("Contacts API", () => {
     expectTypeOf(result.data[0].metadata).toBeAny();
   });
 
+  it("lists contacts for a specific customer without hasCustomer flag", async () => {
+    const { fetchMock, calls } = setupFetch({
+      data: [],
+      meta: { page: 1, per_page: 50, total_pages: 0, total_count: 0 }
+    });
+
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    const customerId = "123e4567-e89b-12d3-a456-426614174000";
+
+    await client.contacts.list({
+      phoneNumberId: "123",
+      customerId
+    });
+
+    const url = calls[0]?.url ?? "";
+    expect(url).toContain(`customer_id=${encodeURIComponent(customerId)}`);
+    expect(url).not.toContain("has_customer=");
+  });
+
   it("loads a single contact", async () => {
     const { fetchMock, calls } = setupFetch({
       data: {
@@ -66,6 +86,20 @@ describe("Contacts API", () => {
     expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/123/contacts/56911112222");
     expect(contact).toMatchObject({ profileName: "Alice" });
     expect(contact.metadata?.tags).toEqual(["vip"]);
+  });
+
+  it("loads a contact when response is bare object", async () => {
+    const { fetchMock } = setupFetch({
+      id: "contact-2",
+      wa_id: "56922223333",
+      profile_name: "Bob"
+    });
+
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    const contact = await client.contacts.get({ phoneNumberId: "123", waId: "56922223333" });
+
+    expect(contact).toMatchObject({ id: "contact-2", profileName: "Bob" });
   });
 
   it("updates contact metadata", async () => {
@@ -86,5 +120,14 @@ describe("Contacts API", () => {
       metadata: { tags: ["vip"], source: "import" }
     });
     expect(response).toEqual({ success: true });
+  });
+
+  it("rejects updates when no fields provided", async () => {
+    const { fetchMock } = setupFetch({ success: true });
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await expect(
+      client.contacts.update({ phoneNumberId: "123", waId: "56911112222" })
+    ).rejects.toThrow(/At least one field/);
   });
 });

@@ -46,6 +46,19 @@ describe("Calls API", () => {
     expectTypeOf(response).not.toBeAny();
   });
 
+  it("connect omits session when not provided", async () => {
+    const { fetchMock, calls } = setupFetch({
+      messaging_product: "whatsapp",
+      success: true
+    });
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.calls.connect({ phoneNumberId: "123", to: "14085551234" });
+
+    const body = JSON.parse(String(calls[0]?.init.body));
+    expect(body).not.toHaveProperty("session");
+  });
+
   it("preAccept posts pre_accept action", async () => {
     const { fetchMock, calls } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
@@ -159,5 +172,17 @@ describe("Calls API", () => {
     expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/calls?");
     expect(calls[0]?.url).toContain("call_id=wacid.123");
     expect(call).toMatchObject({ id: "wacid.123", status: "FAILED" });
+  });
+
+  it("get returns undefined when call not found", async () => {
+    const { fetchMock } = setupFetch({
+      data: [],
+      meta: { page: 1, per_page: 1, total_pages: 1, total_count: 0 }
+    });
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    const call = await client.calls.get({ phoneNumberId: "123", callId: "missing" });
+
+    expect(call).toBeUndefined();
   });
 });

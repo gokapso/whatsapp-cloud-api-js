@@ -50,6 +50,25 @@ describe("Message history API", () => {
     expectTypeOf(result.data[0].metadata).toBeAny();
   });
 
+  it("strips undefined filters and includes date bounds", async () => {
+    const { fetchMock, calls } = setupFetch({ data: [], meta: null });
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.query({
+      phoneNumberId: "123",
+      since: "2025-02-01T00:00:00Z",
+      until: "2025-02-15T23:59:59Z",
+      direction: undefined,
+      status: undefined
+    });
+
+    const url = calls[0]?.url ?? "";
+    expect(url).toContain("since=2025-02-01T00%3A00%3A00Z");
+    expect(url).toContain("until=2025-02-15T23%3A59%3A59Z");
+    expect(url).not.toContain("direction=undefined");
+    expect(url).not.toContain("status=undefined");
+  });
+
   it("lists messages for a single conversation", async () => {
     const { fetchMock, calls } = setupFetch({
       data: [
