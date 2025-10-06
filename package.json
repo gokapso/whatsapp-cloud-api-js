@@ -12,7 +12,6 @@
     "test:watch": "vitest",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\""
   },
-  "keywords": [],
   "author": "Kapso",
   "license": "MIT",
   "dependencies": {
@@ -28,18 +27,18 @@
     "msw": "^2.11.3",
     "tsdown": "^0.15.6",
     "typedoc": "^0.28.13",
-    "typedoc-plugin-markdown": "^4.9.0",
+    "dotenv": "^16.4.5",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"
   },
   "type": "module",
   "sideEffects": false,
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
   },
@@ -57,5 +56,19 @@
   },
   "files": [
     "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "whatsapp",
+    "whatsapp-api",
+    "cloud-api",
+    "meta",
+    "typescript",
+    "sdk",
+    "kapso",
+    "whatsapp-business-api",
+    "whatsapp-cloud-api"
   ]
 }

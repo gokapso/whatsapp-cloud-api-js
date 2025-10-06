@@ -1,6 +1,8 @@
 # @kapso/whatsapp-cloud-api
 
-TypeScript client for the WhatsApp Business Cloud API, with first‑class support for Kapso’s Meta proxy. Ships Zod‑validated builders for messages, templates, media, and phone‑number flows, plus webhook signature verification.
+TypeScript client for the WhatsApp Business Cloud API. It provides typed request/response models, Zod‑validated builders for messages and templates, media helpers, phone‑number flows, and webhook signature verification.
+
+Optionally, you can route your calls through Kapso’s proxy by changing the `baseUrl` and auth header — see “Using the Kapso Proxy (optional)”.
 
 ## Features
 - Configurable base URL and auth: direct Meta Graph or Kapso proxy
@@ -36,7 +38,17 @@ await client.messages.sendText({
 });
 ```
 
-## Kapso Proxy
+## API Surface (overview)
+
+- `client.messages` — send text/media/interactive/templates and mark messages as read
+- `client.templates` — list/create/delete templates on your WABA
+- `client.media` — upload media, fetch metadata, delete media
+- `client.phoneNumbers` — request/verify code, register/deregister, settings, business profile
+- `verifySignature` — verify webhook signatures (app secret)
+- `TemplateDefinition` — strict template creation builders
+- `buildTemplateSendPayload` — build send‑time template payloads
+
+## Using the Kapso Proxy (optional)
 
 To use Kapso’s proxy, set the client base URL and API key:
 
@@ -50,6 +62,16 @@ const client = new WhatsAppClient({
 Notes:
 - Media GET/DELETE requires `phone_number_id` query on the proxy.
 - You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
+
+### Why Kapso?
+
+- Get a WhatsApp API for your number in ~2 minutes.
+- Automatic backup to Supabase so your data is queryable out of the box.
+- Built‑in inbox for your team.
+- Webhooks for critical events: message received, message sent, conversation inactive, and more.
+- Provision US phone numbers for WhatsApp (works globally).
+- Multi‑tenant by design — onboard thousands of customers safely.
+- And more.
 
 ## Templates
 

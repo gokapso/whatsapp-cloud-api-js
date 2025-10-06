@@ -1,5 +1,14 @@
 name: docs
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 on:
   push:
     tags:
@@ -9,9 +18,6 @@ on:
 jobs:
   build-and-deploy-docs:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: whatsapp-cloud-api-js
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,8 +26,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: whatsapp-cloud-api-js/package-lock.json
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install
         run: npm ci
@@ -32,9 +38,8 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: whatsapp-cloud-api-js/docs
+          path: docs
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-

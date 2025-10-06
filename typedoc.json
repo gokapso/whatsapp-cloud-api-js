@@ -1,10 +1,8 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["src/index.ts"],
-  "plugin": ["typedoc-plugin-markdown"],
   "readme": "none",
-  "out": "docs/api",
-  "hideBreadcrumbs": true,
+  "out": "docs",
   "categorizeByGroup": true,
   "excludeExternals": false,
   "excludePrivate": true,
