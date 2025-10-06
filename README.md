@@ -1,8 +1,11 @@
-# @kapso/whatsapp-cloud-api
+# WhatsApp Cloud API TypeScript SDK
+
+[![npm version](https://img.shields.io/npm/v/@kapso/whatsapp-cloud-api.svg)](https://www.npmjs.com/package/@kapso/whatsapp-cloud-api)
+[![npm downloads](https://img.shields.io/npm/dm/@kapso/whatsapp-cloud-api.svg)](https://www.npmjs.com/package/@kapso/whatsapp-cloud-api)
 
 TypeScript client for the WhatsApp Business Cloud API. It provides typed request/response models, Zod‑validated builders for messages and templates, media helpers, phone‑number flows, and webhook signature verification.
 
-Optionally, you can route your calls through Kapso’s proxy by changing the `baseUrl` and auth header — see “Using the Kapso Proxy (optional)”.
+Optionally, you can route your calls through [Kapso](https://kapso.ai/)’s proxy by changing the `baseUrl` and auth header.
 
 ## Features
 - Configurable base URL and auth: direct Meta Graph or Kapso proxy
@@ -16,7 +19,7 @@ Optionally, you can route your calls through Kapso’s proxy by changing the `ba
 ## Install
 
 ```bash
-npm install @kapso/whatsapp-cloud-api zod
+npm install @kapso/whatsapp-cloud-api
 ```
 
 ## Quick Start
@@ -48,7 +51,7 @@ await client.messages.sendText({
 - `TemplateDefinition` — strict template creation builders
 - `buildTemplateSendPayload` — build send‑time template payloads
 
-## Using the Kapso Proxy (optional)
+## Using the [Kapso](https://kapso.ai/) Proxy (optional)
 
 To use Kapso’s proxy, set the client base URL and API key:
 
@@ -63,15 +66,108 @@ Notes:
 - Media GET/DELETE requires `phone_number_id` query on the proxy.
 - You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
 
-### Why Kapso?
+### Why [Kapso](https://kapso.ai/)?
 
 - Get a WhatsApp API for your number in ~2 minutes.
-- Automatic backup to Supabase so your data is queryable out of the box.
 - Built‑in inbox for your team.
+- Query conversations and messages.
+- Automatic backup to Supabase.
 - Webhooks for critical events: message received, message sent, conversation inactive, and more.
 - Provision US phone numbers for WhatsApp (works globally).
 - Multi‑tenant by design — onboard thousands of customers safely.
 - And more.
+
+## Sending Messages
+
+Below are concise examples for common message types. Assume `client` is created as shown above.
+
+### Image
+
+By media ID:
+```ts
+await client.messages.sendImage({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  image: { id: "<MEDIA_ID>", caption: "Check this out" }
+});
+```
+
+By link:
+```ts
+await client.messages.sendImage({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  image: { link: "https://example.com/photo.jpg", caption: "Photo" }
+});
+```
+
+### Document
+```ts
+await client.messages.sendDocument({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  document: { link: "https://example.com/invoice.pdf", filename: "invoice.pdf", caption: "Invoice" }
+});
+```
+
+### Video
+```ts
+await client.messages.sendVideo({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  video: { link: "https://example.com/clip.mp4", caption: "Clip" }
+});
+```
+
+### Sticker
+```ts
+await client.messages.sendSticker({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  sticker: { id: "<MEDIA_ID>" }
+});
+```
+
+### Location
+```ts
+await client.messages.sendLocation({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  location: { latitude: -33.45, longitude: -70.66, name: "Santiago", address: "CL" }
+});
+```
+
+### Contacts
+```ts
+await client.messages.sendContacts({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  contacts: [
+    { name: { formatted_name: "John Doe" }, phones: [{ phone: "+15551234567", type: "WORK" }] }
+  ]
+});
+```
+
+### Reaction
+```ts
+await client.messages.sendReaction({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  reaction: { message_id: "wamid......", emoji: "😀" }
+});
+```
+
+### Interactive Buttons
+```ts
+await client.messages.sendInteractiveButtons({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  header: { type: "text", text: "Header" },
+  bodyText: "Pick an option",
+  footerText: "Footer",
+  buttons: [ { id: "accept", title: "Accept" }, { id: "decline", title: "Decline" } ]
+});
+```
 
 ## Templates
 
