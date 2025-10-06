@@ -26,7 +26,8 @@ describe("Conversations API", () => {
           id: "conv-1",
           phone_number: "+15551234567",
           status: "active",
-          last_active_at: "2025-01-01T12:00:00Z"
+          last_active_at: "2025-01-01T12:00:00Z",
+          phone_number_id: "123"
         }
       ],
       meta: { page: 1, per_page: 20, total_pages: 1, total_count: 1 }
@@ -49,10 +50,12 @@ describe("Conversations API", () => {
       id: "conv-1",
       phoneNumber: "+15551234567",
       status: "active",
-      lastActiveAt: "2025-01-01T12:00:00Z"
+      lastActiveAt: "2025-01-01T12:00:00Z",
+      phoneNumberId: "123"
     });
     expect(result.meta).toMatchObject({ page: 1, perPage: 20, totalPages: 1, totalCount: 1 });
     expectTypeOf(result.data[0].status).toBeString();
+    expectTypeOf(result.data[0].phoneNumberId).toBeString();
   });
 
   it("retrieves a single conversation", async () => {
@@ -60,7 +63,8 @@ describe("Conversations API", () => {
       data: {
         id: "conv-1",
         phone_number: "+15551234567",
-        status: "active"
+        status: "active",
+        phone_number_id: "123"
       }
     });
 
@@ -69,7 +73,7 @@ describe("Conversations API", () => {
     const conversation = await client.conversations.get({ conversationId: "conv-1" });
 
     expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/conversations/conv-1");
-    expect(conversation).toMatchObject({ id: "conv-1", phoneNumber: "+15551234567" });
+    expect(conversation).toMatchObject({ id: "conv-1", phoneNumber: "+15551234567", phoneNumberId: "123" });
     expectTypeOf(conversation.status).toBeString();
   });
 
@@ -77,7 +81,8 @@ describe("Conversations API", () => {
     const { fetchMock } = setupFetch({
       id: "conv-2",
       phone_number: "+15559876543",
-      status: "resolved"
+      status: "resolved",
+      phone_number_id: "456"
     });
 
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
@@ -87,6 +92,7 @@ describe("Conversations API", () => {
     expect(conversation).toMatchObject({
       id: "conv-2",
       phoneNumber: "+15559876543",
+      phoneNumberId: "456",
       status: "resolved"
     });
   });

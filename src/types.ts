@@ -119,6 +119,7 @@ export interface ListResponse<T> {
 export interface ConversationRecord {
   id: string;
   phoneNumber?: string;
+  phoneNumberId?: string;
   status?: string;
   lastActiveAt?: string;
   contactName?: string;
