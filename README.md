@@ -49,7 +49,7 @@ await client.messages.sendText({
 
 ## API surface
 
-### Core (Meta access token)
+### Core
 
 - `client.messages` — send text/media/interactive/templates and mark messages as read
 - `client.templates` — list/create/delete templates on your WABA
@@ -82,7 +82,7 @@ Notes:
 - Media GET/DELETE requires `phoneNumberId` query on the proxy.
 - You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
 
-### Why [Kapso](https://kapso.ai/)?
+### Why Kapso?
 
 - Get a WhatsApp API for your number in ~2 minutes.
 - Built‑in inbox for your team.
@@ -194,7 +194,7 @@ await client.messages.sendInteractiveButtons({
 });
 ```
 
-## Query history & contacts (Kapso proxy)
+## Query history & contacts
 
 When you point the client to Kapso’s proxy (`baseUrl: "https://app.kapso.ai/api/meta"` plus `kapsoApiKey`), you can query stored data in addition to sending messages.
 
@@ -236,7 +236,7 @@ const call = await client.calls.get({ phoneNumberId: "647015955153740", callId: 
 
 ## Templates
 
-### Create (strict Zod validation)
+### Create
 
 ```ts
 import { TemplateDefinition } from "@kapso/whatsapp-cloud-api";
