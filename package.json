@@ -1,6 +1,6 @@
 {
   "name": "@kapso/whatsapp-cloud-api",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "TypeScript client for WhatsApp Business Cloud API with Kapso proxy support, typed responses, and Zod-validated builders.",
   "main": "./dist/index.cjs",
   "scripts": {
@@ -40,6 +40,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
     }
   },
   "types": "./dist/index.d.ts",

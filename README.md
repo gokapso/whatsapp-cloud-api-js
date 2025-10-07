@@ -18,6 +18,17 @@ Optionally, you can route your calls through [Kapso](https://kapso.ai/)’s prox
 npm install @kapso/whatsapp-cloud-api
 ```
 
+## Import paths
+
+- Universal entry (no Node builtins):
+  - ESM: `import { WhatsAppClient } from "@kapso/whatsapp-cloud-api"`
+  - CJS: `const { WhatsAppClient } = require("@kapso/whatsapp-cloud-api")`
+- Server-only helpers (Node builtins):
+  - ESM: `import { verifySignature } from "@kapso/whatsapp-cloud-api/server"`
+  - CJS: `const { verifySignature } = require("@kapso/whatsapp-cloud-api/server")`
+
+Why: keeping server-only code under `./server` prevents client bundlers (Vite/Rollup/Webpack 5) from resolving Node builtins when you build for the browser.
+
 ## Quick start
 
 ```ts
@@ -304,7 +315,7 @@ await client.phoneNumbers.businessProfile.update({ phoneNumberId: "<PHONE_NUMBER
 ## Webhooks
 
 ```ts
-import { verifySignature } from "@kapso/whatsapp-cloud-api";
+import { verifySignature } from "@kapso/whatsapp-cloud-api/server";
 
 app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
   const ok = verifySignature({
@@ -320,6 +331,11 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
 });
 ```
 
+### Framework notes
+
+- Next.js / Remix / SvelteKit: import from `@kapso/whatsapp-cloud-api/server` only inside API routes or server actions. Do not import the server subpath in client components.
+- Cloudflare Workers / Vercel Edge / Workers-like runtimes: use only the universal entry; server subpath relies on Node `crypto`.
+
 ## Typed responses
 
 - All helpers return typed payloads (e.g., `SendMessageResponse`, `MediaUploadResponse`, etc.).
@@ -331,8 +347,18 @@ const response = await client.request<MyType>("GET", "<path>", { responseType: "
 
 ## Runtime & Compatibility
 
-- Requires Node.js 20.19+ or any environment with WHATWG `fetch`/`FormData` globals.
-- ESM and CJS builds are provided. The package is side-effect free and supports tree-shaking.
+- Universal entry has no Node builtins and works in Node 20.19+, browsers, and edge runtimes that provide WHATWG `fetch`/`FormData`.
+- Server subpath (`/server`) targets Node.js and imports Node builtins (e.g., `node:crypto`). Use it only on the server.
+- ESM and CJS builds are provided. The package is side‑effect free and supports tree‑shaking.
+
+## Migration
+
+If you previously imported `verifySignature` from the package root, update to the server subpath:
+
+```diff
+- import { verifySignature } from "@kapso/whatsapp-cloud-api"
++ import { verifySignature } from "@kapso/whatsapp-cloud-api/server"
+```
 
 ## Error handling
 

@@ -9,7 +9,6 @@ export { ConversationsResource } from "./resources/conversations";
 export { ContactsResource } from "./resources/contacts";
 export * as TemplateDefinition from "./resources/templates/definition";
 export { buildTemplateSendPayload, templateSendInputSchema } from "./resources/templates/send";
-export { verifySignature } from "./webhooks/verify";
 export { GraphApiError } from "./errors";
 export type { ErrorCategory, RetryHint, RetryAction } from "./errors";
 export * from "./types";
