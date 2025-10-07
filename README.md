@@ -18,17 +18,6 @@ Optionally, you can route your calls through [Kapso](https://kapso.ai/)’s prox
 npm install @kapso/whatsapp-cloud-api
 ```
 
-## Import paths
-
-- Universal entry (no Node builtins):
-  - ESM: `import { WhatsAppClient } from "@kapso/whatsapp-cloud-api"`
-  - CJS: `const { WhatsAppClient } = require("@kapso/whatsapp-cloud-api")`
-- Server-only helpers (Node builtins):
-  - ESM: `import { verifySignature } from "@kapso/whatsapp-cloud-api/server"`
-  - CJS: `const { verifySignature } = require("@kapso/whatsapp-cloud-api/server")`
-
-Why: keeping server-only code under `./server` prevents client bundlers (Vite/Rollup/Webpack 5) from resolving Node builtins when you build for the browser.
-
 ## Quick start
 
 ```ts
@@ -75,7 +64,7 @@ await client.messages.sendText({
 
 - `client.conversations` — list/get/update conversations across your project
 - `client.messages.query` / `listByConversation` — pull stored message history
-- `client.contacts` — list/get/update contacts, with `customerId` or `hasCustomer` filters
+- `client.contacts` — list/get/update contacts, with `customerId` filter
 - `client.calls` — initiate calls plus historic call logs (`list`/`get`) and permission helpers
 
 ## Using the Kapso Proxy
