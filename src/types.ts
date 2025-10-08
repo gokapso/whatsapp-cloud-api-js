@@ -114,11 +114,24 @@ export interface ConversationRecord {
   status?: string;
   lastActiveAt?: string;
   contactName?: string;
+  kapso?: ConversationKapsoExtensions;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
 export type ConversationListResponse = PagedResponse<ConversationRecord>;
+
+export interface ConversationKapsoExtensions {
+  contactName?: string;
+  messagesCount?: number;
+  lastMessageId?: string;
+  lastMessageType?: string;
+  lastMessageTimestamp?: string;
+  lastMessageText?: string | null;
+  lastInboundAt?: string;
+  lastOutboundAt?: string;
+  [key: string]: unknown;
+}
 
 export interface MetaMessageContext {
   id?: string;
