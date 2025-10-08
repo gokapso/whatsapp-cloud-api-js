@@ -200,7 +200,7 @@ await client.messages.sendInteractiveButtons({
 
 ## Templates
 
-### Templates (primary: raw components)
+### Build with components
 
 Use `buildTemplatePayload` as the primary way to build templates. It accepts Meta‑style `components`, normalizes casing, and enforces shape (e.g., `language.policy = 'deterministic'` when using an object).
 
