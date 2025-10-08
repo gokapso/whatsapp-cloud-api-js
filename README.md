@@ -301,23 +301,39 @@ const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: 
 await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" });
 ```
 
-### Receiving media (download + display)
+### Receiving media (URL‑first, with bytes fallback)
 
-When you receive a message that contains media, you typically get a media reference (ID) in the message payload. Use the new helper below to convert that reference into bytes you can display or store.
+Common cases:
+
+1) URL‑first with Kapso
+
+Kapso stores inbound media and now also mirrors outbound media shortly after send. Ask for `kapso(media_url)` when listing messages and render the URL directly (SSR‑friendly).
+
+```ts
+import { buildKapsoMessageFields } from "@kapso/whatsapp-cloud-api";
+
+const fields = buildKapsoMessageFields("media_url");
+const page = await client.messages.listByConversation({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  conversationId: "<CONVERSATION_ID>",
+  fields
+});
+
+const msg = page.data.find(m => m.type === "image");
+const src = msg?.kapso?.mediaUrl ?? msg?.image?.link; // use direct URL when present
+```
+
+2) Bytes fallback (universal)
+
+If you need the raw bytes or the URL has not been mirrored yet, use `download()`. The SDK automatically skips auth headers for public WhatsApp CDNs and uses them for Kapso hosts.
 
 Key points:
-- `client.media.download({ mediaId, ... })` resolves the short‑lived URL via `media.get()` and then fetches the actual bytes with the client’s auth headers.
-- Return types:
-  - default: `ArrayBuffer`
-  - `as: "blob"` → `Blob` (useful in browsers)
-  - `as: "response"` → raw `Response`
-- Meta vs Kapso:
-  - Direct Meta: no `phoneNumberId` needed for `download()`; we send `Authorization: Bearer <access token>` automatically.
-  - Kapso proxy: you must pass `phoneNumberId`; we send `X-API-Key: <kapso key>` automatically.
-- The URL returned by `media.get()` is short‑lived (expires within minutes). Download promptly and avoid caching the URL.
-- Some CDN endpoints can be strict about headers. If you see 401/403 on download, try adding a `User-Agent` header; you can pass extra headers to `download()`.
+- `client.media.download({ mediaId, ... })` resolves the short‑lived URL via `media.get()` then fetches the bytes.
+- Return types: default `ArrayBuffer`, `as: "blob"` → `Blob`, `as: "response"` → `Response`.
+- Direct Meta: `phoneNumberId` is not required.
+- Kapso proxy: pass `phoneNumberId`.
 
-Minimal examples:
+Examples:
 
 ```ts
 // 1) From a message record you loaded (e.g., via client.messages.query):
@@ -446,7 +462,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
 
 ## Raw fetch helper
 
-Use `client.fetch(url, init?)` to make a request to any absolute URL with the client’s auth headers applied. This is useful when you need to fetch a resource that is not a Graph/Kapso path, like the resolved media CDN URL.
+Use `client.fetch(url, init?)` to make a request to any absolute URL with the client’s auth headers applied. Most users do not need this for media anymore because `media.download()` handles header policy automatically.
 
 ```ts
 // Sends Authorization (Meta) or X-API-Key (Kapso) automatically
