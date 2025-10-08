@@ -104,4 +104,34 @@ describe("Conversations API", () => {
     expect(JSON.parse(String(calls[0]?.init.body))).toMatchObject({ status: "ended" });
     expect(response).toEqual({ success: true });
   });
+
+  it("includes Kapso extras when fields are requested", async () => {
+    const { fetchMock } = setupFetch({
+      data: [
+        {
+          id: "conv-3",
+          phone_number: "+15550001111",
+          status: "active",
+          last_active_at: "2025-01-01T00:00:00Z",
+          phone_number_id: "123",
+          kapso: {
+            contact_name: "Alice",
+            messages_count: 42,
+            last_message_id: "wamid.latest",
+            last_message_type: "text",
+            last_message_timestamp: "2025-01-01T00:00:00Z",
+            last_message_text: "Hello",
+            last_inbound_at: "2025-01-01T00:00:00Z",
+            last_outbound_at: "2025-01-01T00:00:00Z"
+          }
+        }
+      ],
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
+    });
+
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const page = await client.conversations.list({ phoneNumberId: "123", limit: 1, fields: "kapso(contact_name)" });
+    const conv = page.data[0];
+    expect(conv.kapso?.contactName).toBe("Alice");
+  });
 });
