@@ -10,7 +10,7 @@ Optionally, you can route calls through [Kapso](https://kapso.ai/)’s proxy by 
 ## Choose your setup
 
 1. **Meta setup (~ 1 hour)** – Create a Meta WhatsApp app, generate a system or business token, and link a WhatsApp Business phone number in Meta Business Manager.
-2. **Kapso proxy (optional)** – Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
+2. **Kapso proxy (~ 2 minutes)** – Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
 
 ## Install
 
@@ -53,10 +53,11 @@ await client.messages.sendText({
 ### Kapso proxy extras
  Requires `baseUrl` and `kapsoApiKey`.
 
-- `client.conversations` — list/get/update conversations across your project
-- `client.messages.query` / `listByConversation` — pull stored message history
-- `client.contacts` — list/get/update contacts, with `customerId` filter
-- `client.calls` — initiate calls plus historic call logs (`list`/`get`) and permission helpers
+- [`client.conversations`](#query-history--contacts) — list/get/update conversations across your project
+- [`client.messages.query` / `listByConversation`](#query-history--contacts) — pull stored message history
+- [`client.contacts`](#query-history--contacts) — list/get/update contacts, with `customerId` filter
+- [`client.calls`](docs/docs/whatsapp/typescript-sdk/calls.mdx) — initiate calls plus historic call logs (`list`/`get`) and permission helpers
+- [`Kapso Extensions`](docs/docs/whatsapp/typescript-sdk/kapso-extensions.mdx) — opt-in to extra fields via `fields=kapso(...)`
 
 ## Using the Kapso Proxy
 
