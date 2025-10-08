@@ -36,12 +36,20 @@ export interface GraphSuccessResponse {
 
 /** Cursor-based paging info used by list endpoints. */
 export interface GraphPaging {
-  cursors?: {
-    before?: string;
-    after?: string;
+  cursors: {
+    before?: string | null;
+    after?: string | null;
   };
-  next?: string;
-  previous?: string;
+  next?: string | null;
+  previous?: string | null;
+  [key: string]: unknown;
+}
+
+/** Generic Graph-style paged response. */
+export interface PagedResponse<T> {
+  data: T[];
+  paging: GraphPaging;
+  [key: string]: unknown;
 }
 
 /** Response from POST /<PHONE_NUMBER_ID>/media. */
@@ -80,10 +88,7 @@ export interface MessageTemplate {
 }
 
 /** Response from listing templates on a WABA. */
-export interface TemplateListResponse {
-  data: MessageTemplate[];
-  paging?: GraphPaging;
-}
+export type TemplateListResponse = PagedResponse<MessageTemplate>;
 
 /** Response from creating a template. */
 export interface TemplateCreateResponse {
@@ -102,20 +107,6 @@ export type PhoneNumberDeregisterResponse = GraphSuccessResponse;
 export type PhoneNumberSettingsUpdateResponse = GraphSuccessResponse;
 export type BusinessProfileUpdateResponse = GraphSuccessResponse;
 
-export interface ListMeta {
-  page?: number;
-  perPage?: number;
-  totalPages?: number;
-  totalCount?: number;
-  [key: string]: unknown;
-}
-
-export interface ListResponse<T> {
-  data: T[];
-  meta?: ListMeta;
-  [key: string]: unknown;
-}
-
 export interface ConversationRecord {
   id: string;
   phoneNumber?: string;
@@ -127,20 +118,70 @@ export interface ConversationRecord {
   [key: string]: unknown;
 }
 
-export type ConversationListResponse = ListResponse<ConversationRecord>;
+export type ConversationListResponse = PagedResponse<ConversationRecord>;
 
-export interface MessageRecord {
-  id: string;
-  messageType?: string;
-  content?: string;
-  direction?: string;
-  status?: string;
-  createdAt?: string;
-  metadata?: Record<string, unknown>;
+export interface MetaMessageContext {
+  id?: string;
+  from?: string;
+  referredProduct?: {
+    catalogId?: string;
+    productRetailerId?: string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
-export type MessageListResponse = ListResponse<MessageRecord>;
+export interface MediaData {
+  url?: string;
+  filename?: string;
+  contentType?: string;
+  byteSize?: number;
+  [key: string]: unknown;
+}
+
+export interface KapsoMessageExtensions {
+  direction?: string;
+  status?: string;
+  processingStatus?: string;
+  phoneNumber?: string;
+  hasMedia?: boolean;
+  mediaData?: MediaData;
+  whatsappConversationId?: string;
+  contactName?: string;
+  messageTypeData?: Record<string, unknown>;
+  flowResponse?: Record<string, unknown>;
+  flowToken?: string;
+  flowName?: string;
+  orderText?: string;
+  [key: string]: unknown;
+}
+
+export interface MetaMessage {
+  id: string;
+  type: string;
+  timestamp: string;
+  from?: string;
+  to?: string;
+  context?: MetaMessageContext;
+  text?: { body?: string; [key: string]: unknown };
+  image?: { id?: string; link?: string; caption?: string; [key: string]: unknown };
+  video?: { id?: string; link?: string; caption?: string; [key: string]: unknown };
+  audio?: { id?: string; link?: string; [key: string]: unknown };
+  document?: { id?: string; link?: string; filename?: string; caption?: string; [key: string]: unknown };
+  location?: { latitude?: number; longitude?: number; name?: string; address?: string; [key: string]: unknown };
+  interactive?: Record<string, unknown>;
+  template?: { name?: string; language?: Record<string, unknown>; components?: Array<Record<string, unknown>>; [key: string]: unknown };
+  order?: { catalogId?: string; productItems?: Array<Record<string, unknown>>; orderText?: string; [key: string]: unknown };
+  sticker?: { id?: string; link?: string; mimeType?: string; animated?: boolean; [key: string]: unknown };
+  contacts?: Array<Record<string, unknown>>;
+  reaction?: { emoji?: string; messageId?: string; [key: string]: unknown };
+  kapso?: KapsoMessageExtensions;
+  [key: string]: unknown;
+}
+
+export type UnifiedMessage = MetaMessage;
+
+export type MessageListResponse = PagedResponse<UnifiedMessage>;
 
 export interface ContactRecord {
   id: string;
@@ -153,7 +194,7 @@ export interface ContactRecord {
   [key: string]: unknown;
 }
 
-export type ContactListResponse = ListResponse<ContactRecord>;
+export type ContactListResponse = PagedResponse<ContactRecord>;
 
 export interface CallingWeeklyHoursEntry {
   dayOfWeek: string;
@@ -278,7 +319,7 @@ export interface CallRecord {
   [key: string]: unknown;
 }
 
-export type CallListResponse = ListResponse<CallRecord>;
+export type CallListResponse = PagedResponse<CallRecord>;
 
 /** Standard Graph error envelope (camelCase variant). */
 export interface GraphErrorResponse {
