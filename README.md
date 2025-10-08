@@ -257,7 +257,7 @@ Minimal examples:
 import { buildTemplateDefinition } from '@kapso/whatsapp-cloud-api';
 
 // Authentication (copy code)
-const authTpl = buildTemplateDefinition({
+const authenticationTemplate = buildTemplateDefinition({
   name: 'authentication_code',
   language: 'en_US',
   category: 'AUTHENTICATION',
@@ -270,7 +270,7 @@ const authTpl = buildTemplateDefinition({
 });
 
 // Limited-time offer
-const lto = buildTemplateDefinition({
+const limitedTimeOfferTemplate = buildTemplateDefinition({
   name: 'limited_offer', language: 'en_US', category: 'MARKETING',
   components: [
     { type: 'BODY', text: 'Hello {{1}}', example: { bodyText: [['Pablo']] } },
@@ -279,7 +279,7 @@ const lto = buildTemplateDefinition({
 });
 
 // Catalog / MPM / SPM
-const catalog = buildTemplateDefinition({
+const catalogTemplate = buildTemplateDefinition({
   name: 'catalog_push', language: 'en_US', category: 'MARKETING',
   components: [ { type: 'BODY', text: 'Browse our catalog' }, { type: 'BUTTONS', buttons: [{ type: 'CATALOG', text: 'View catalog' }] } ]
 });
