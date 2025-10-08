@@ -12,3 +12,8 @@ export { buildTemplateSendPayload, templateSendInputSchema } from "./resources/t
 export { GraphApiError } from "./errors";
 export type { ErrorCategory, RetryHint, RetryAction } from "./errors";
 export * from "./types";
+export {
+  KAPSO_MESSAGE_FIELDS,
+  buildKapsoFields,
+  buildKapsoMessageFields
+} from "./kapso";
