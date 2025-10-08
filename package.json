@@ -1,6 +1,6 @@
 {
   "name": "@kapso/whatsapp-cloud-api",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "TypeScript client for WhatsApp Business Cloud API with Kapso proxy support, typed responses, and Zod-validated builders.",
   "main": "./dist/index.cjs",
   "scripts": {
@@ -52,7 +52,7 @@
     "type": "git",
     "url": "https://github.com/kapso-ai/whatsapp-cloud-api-js.git"
   },
-  "homepage": "https://kapso.ai",
+  "homepage": "https://docs.kapso.ai",
   "bugs": {
     "url": "https://github.com/kapso-ai/whatsapp-cloud-api-js/issues"
   },
