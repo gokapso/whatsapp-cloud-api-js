@@ -78,6 +78,28 @@ export class MediaResource {
       responseType: "json"
     });
   }
+
+  /**
+   * Download media bytes for a given mediaId.
+   * - Uses {@link get} to resolve the short-lived URL, then performs a raw fetch with client auth headers.
+   * - Set `as` to control the return type. Defaults to `arrayBuffer`.
+   */
+  async download(input: GetInput & { headers?: Record<string, string>; as?: "arrayBuffer" | "blob" | "response" }): Promise<ArrayBuffer | Blob | Response> {
+    const parsed = getSchema.parse(input);
+
+    if (this.client.isKapsoProxy() && !parsed.phoneNumberId) {
+      throw new Error("phoneNumberId is required when using the Kapso proxy");
+    }
+
+    const metadata = await this.get({ mediaId: parsed.mediaId, phoneNumberId: parsed.phoneNumberId });
+    // "client.fetch" is not visible in the narrow type of WhatsAppClient; cast to access it.
+    const clientWithFetch = this.client as unknown as WhatsAppClient & { fetch: (url: string, init?: RequestInit & { headers?: Record<string, string> }) => Promise<Response> };
+    const res = await clientWithFetch.fetch(metadata.url, { headers: input.headers });
+
+    if (input.as === "response") return res;
+    if (input.as === "blob") return res.blob();
+    return res.arrayBuffer();
+  }
 }
 
 function buildMediaQuery(phoneNumberId?: string) {
