@@ -75,7 +75,18 @@ const buttonFlowSchema = z.object({
   type: z.literal("button"),
   subType: z.literal("flow"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
-  parameters: z.array(z.object({ type: z.literal("payload"), payload: z.any() })).optional()
+  parameters: z
+    .array(
+      z.object({
+        type: z.literal("action"),
+        action: z
+          .object({
+            flow_token: z.string().min(1).optional(),
+            flow_action_data: z.object({}).catchall(z.any()).optional()
+          })
+      })
+    )
+    .optional()
 });
 
 const buttonParamSchema = z.union([buttonQuickReplySchema, buttonUrlSchema, buttonPhoneSchema, buttonCopyCodeSchema, buttonFlowSchema]);
@@ -96,6 +107,10 @@ export type TemplateSendInput = z.infer<typeof templateSendInputSchema>;
  * @category Templates
  */
 export function buildTemplateSendPayload(input: TemplateSendInput) {
+  if (Object.prototype.hasOwnProperty.call(input as Record<string, unknown>, "components")) {
+    throw new Error("buildTemplateSendPayload does not accept raw components; use buildTemplatePayload for Meta-style payloads");
+  }
+
   const parsed = templateSendInputSchema.parse(input);
 
   const components: Array<Record<string, unknown>> = [];
