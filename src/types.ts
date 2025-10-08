@@ -162,7 +162,7 @@ export interface MetaMessage {
   timestamp: string;
   from?: string;
   to?: string;
-  context?: MetaMessageContext;
+  context?: MetaMessageContext | null;
   text?: { body?: string; [key: string]: unknown };
   image?: { id?: string; link?: string; caption?: string; [key: string]: unknown };
   video?: { id?: string; link?: string; caption?: string; [key: string]: unknown };
