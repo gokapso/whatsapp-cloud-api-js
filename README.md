@@ -44,8 +44,8 @@ await client.messages.sendText({
 - [`client.messages`](#sending-messages) — send text/media/interactive/templates and mark messages as read
 - [`client.templates`](#templates) — list/create/delete templates on your WABA
 - [`client.media`](#sending-messages) — upload media, fetch metadata, delete media
-- [`client.phoneNumbers`](docs/docs/whatsapp/typescript-sdk/phone-numbers.mdx) — request/verify code, register/deregister, settings, business profile
-- [`verifySignature`](docs/docs/whatsapp/typescript-sdk/utilities.mdx#webhooks) — verify webhook signatures (app secret)
+- [`client.phoneNumbers`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/phone-numbers) — request/verify code, register/deregister, settings, business profile
+- [`verifySignature`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/utilities#webhooks) — verify webhook signatures (app secret)
 - [`TemplateDefinition`](#templates) — strict template creation builders
 - [`buildTemplateSendPayload`](#typed-builder-optional) — build send-time template payloads
 - [`buildTemplatePayload`](#build-with-components) — accept Meta-style raw `components` and normalize/camelize inputs
@@ -53,11 +53,11 @@ await client.messages.sendText({
 ### Kapso proxy extras
  Requires `baseUrl` and `kapsoApiKey`.
 
-- [`client.conversations`](#query-history--contacts) — list/get/update conversations across your project
-- [`client.messages.query` / `listByConversation`](#query-history--contacts) — pull stored message history
-- [`client.contacts`](#query-history--contacts) — list/get/update contacts, with `customerId` filter
-- [`client.calls`](docs/docs/whatsapp/typescript-sdk/calls.mdx) — initiate calls plus historic call logs (`list`/`get`) and permission helpers
-- [`Kapso Extensions`](docs/docs/whatsapp/typescript-sdk/kapso-extensions.mdx) — opt-in to extra fields via `fields=kapso(...)`
+- [`client.conversations`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/conversations) — list/get/update conversations across your project
+- [`client.messages.query` / `listByConversation`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/messages) — pull stored message history
+- [`client.contacts`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/contacts) — list/get/update contacts, with `customerId` filter
+- [`client.calls`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/calls) — initiate calls plus historic call logs (`list`/`get`) and permission helpers
+- [`Kapso Extensions`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/kapso-extensions) — opt-in to extra fields via `fields=kapso(...)`
 
 ## Using the Kapso Proxy
 
