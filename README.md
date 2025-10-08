@@ -215,7 +215,7 @@ const template = buildTemplatePayload({
 });
 ```
 
-### Typed builder (optional)
+### Typed builder
 
 Prefer typed guardrails? Use `buildTemplateSendPayload`. It outputs the same Meta structure but gives compile‑time guidance. Example with body parameters and a Flow button:
 
@@ -240,15 +240,9 @@ const template = buildTemplateSendPayload({
 });
 ```
 
-### Creation (strict builder)
+### Template creation
 
-The creation builder validates components and examples like Meta’s review. Highlights:
-
-- Utility/Marketing text/media headers, body/footers, URL/Phone/Quick‑reply/COPY_CODE/Flow buttons.
-- Authentication templates: OTP buttons (COPY_CODE, ONE_TAP), `messageSendTtlSeconds`, `addSecurityRecommendation`, `codeExpirationMinutes`, `supportedApps`.
-- Limited‑time offer: `LIMITED_TIME_OFFER` component with `{ text, hasExpiration }`.
-- Commerce: Catalog button, MPM button, SPM buttons with product headers.
-- Carousels: Media‑card and product‑card with per‑card header and up to two buttons.
+The creation builder validates components and examples like Meta’s review.
 
 Minimal examples:
 
@@ -390,7 +384,7 @@ const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: 
 await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" });
 ```
 
-### Receiving media (URL‑first, with bytes fallback)
+### Receiving media
 
 Common cases:
 
