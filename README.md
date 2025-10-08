@@ -43,7 +43,7 @@ await client.messages.sendText({
 - Templates: creation (strict validation for header/body/footer/buttons), send‑time parameter builders
 - Media: upload/get/delete
 - Phone numbers: request/verify code, register/deregister; settings and business profile
-- Historical data (Kapso proxy): conversations, message history, contacts, and call logs
+- Historical data (Kapso proxy): conversations, message history, contacts, and call logs with Meta-compatible payloads and Graph cursor pagination
 - Webhooks: X‑Hub‑Signature‑256 verification helper
 - Modern build (ESM+CJS), TypeScript types, Zod validation
 
@@ -80,6 +80,7 @@ const client = new WhatsAppClient({
 
 Notes:
 - Media GET/DELETE requires `phoneNumberId` query on the proxy.
+- Responses mirror Meta’s Cloud API message schema. Kapso-only enrichments live under the `kapso` key; use the `fields` parameter (for example `fields: "kapso(flow_response,flow_token)"`) to opt into specific fields or `fields: "kapso()"` to omit them entirely.
 - You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
 
 ### Why Kapso?
@@ -208,7 +209,7 @@ const client = new WhatsAppClient({
 const conversations = await client.conversations.list({
   phoneNumberId: "647015955153740",
   status: "active",
-  perPage: 50
+  limit: 50
 });
 
 const conversation = await client.conversations.get({ conversationId: conversations.data[0].id });
@@ -218,7 +219,9 @@ await client.conversations.updateStatus({ conversationId: conversation.id, statu
 const history = await client.messages.query({
   phoneNumberId: "647015955153740",
   direction: "inbound",
-  since: "2025-01-01T00:00:00Z"
+  since: "2025-01-01T00:00:00Z",
+  limit: 50,
+  after: conversations.paging.cursors.after
 });
 
 // Contacts
@@ -230,9 +233,16 @@ await client.contacts.update({
 });
 
 // Call logs
-const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", perPage: 20 });
+const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", limit: 20 });
 const call = await client.calls.get({ phoneNumberId: "647015955153740", callId: calls.data[0].id });
 ```
+
+All history endpoints return Meta-compatible records with Graph paging:
+
+- `page.data` (camelCased) mirrors Meta’s message/contact/conversation/call schema.
+- `page.paging` exposes `cursors.before` / `cursors.after` plus `next` / `previous` URLs when present.
+- Supply `fields: buildKapsoFields()` (or the string `"kapso(default)"`) to include all Kapso extensions, or pass your own subset such as `fields: "kapso(flow_response,flow_token)"`. Use `fields: "kapso()"` to omit Kapso extras entirely.
+- Tip: `buildKapsoFields` is exported from the SDK, so you can `import { buildKapsoFields } from "@kapso/whatsapp-cloud-api";` and drop it straight into your queries.
 
 ## Templates
 
@@ -291,6 +301,102 @@ const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: 
 await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" });
 ```
 
+### Receiving media (download + display)
+
+When you receive a message that contains media, you typically get a media reference (ID) in the message payload. Use the new helper below to convert that reference into bytes you can display or store.
+
+Key points:
+- `client.media.download({ mediaId, ... })` resolves the short‑lived URL via `media.get()` and then fetches the actual bytes with the client’s auth headers.
+- Return types:
+  - default: `ArrayBuffer`
+  - `as: "blob"` → `Blob` (useful in browsers)
+  - `as: "response"` → raw `Response`
+- Meta vs Kapso:
+  - Direct Meta: no `phoneNumberId` needed for `download()`; we send `Authorization: Bearer <access token>` automatically.
+  - Kapso proxy: you must pass `phoneNumberId`; we send `X-API-Key: <kapso key>` automatically.
+- The URL returned by `media.get()` is short‑lived (expires within minutes). Download promptly and avoid caching the URL.
+- Some CDN endpoints can be strict about headers. If you see 401/403 on download, try adding a `User-Agent` header; you can pass extra headers to `download()`.
+
+Minimal examples:
+
+```ts
+// 1) From a message record you loaded (e.g., via client.messages.query):
+const { data } = await client.messages.query({ phoneNumberId: "<PHONE_NUMBER_ID>", limit: 1 });
+const msg = data[0];
+
+if (msg.type === "image" && msg.image?.id) {
+  const mediaId = msg.image.id;
+  const bytes = await client.media.download({ mediaId, phoneNumberId: "<PHONE_NUMBER_ID>" });
+  // bytes is an ArrayBuffer; do what you need with it
+}
+```
+
+Node (save to file):
+
+```ts
+import { writeFile } from "node:fs/promises";
+
+const buf = Buffer.from(await client.media.download({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" }) as ArrayBuffer);
+await writeFile("./downloaded.jpg", buf);
+```
+
+Browser (show as image):
+
+```ts
+const blob = await client.media.download({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>", as: "blob" });
+const url = URL.createObjectURL(blob);
+document.querySelector("img#preview")!.setAttribute("src", url);
+```
+
+Pass custom headers (if needed):
+
+```ts
+await client.media.download({
+  mediaId: "<MEDIA_ID>",
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  headers: { "User-Agent": "curl/7.64.1" }
+});
+```
+
+Webhook → download flow (Express, simplified):
+
+```ts
+import express from "express";
+import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
+import { normalizeWebhook, verifySignature } from "@kapso/whatsapp-cloud-api/server";
+
+const app = express();
+app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!verifySignature({ appSecret: process.env.META_APP_SECRET!, rawBody: req.body, signatureHeader: req.headers["x-hub-signature-256"] as string })) {
+    return res.status(401).end();
+  }
+
+  const payload = JSON.parse(req.body.toString("utf8"));
+  const events = normalizeWebhook(payload);
+
+  for (const message of events.messages) {
+    if (message.image?.id) {
+      // ... download media, persist, etc.
+    }
+  }
+
+  const client = new WhatsAppClient({
+    // Use accessToken for Meta direct OR kapsoApiKey + baseUrl for Kapso proxy
+    accessToken: process.env.META_ACCESS_TOKEN,
+    // baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: process.env.KAPSO_API_KEY
+  });
+
+  // If you obtained a mediaId from the event:
+  // const bytes = await client.media.download({ mediaId, phoneNumberId: "<PHONE_NUMBER_ID>" });
+  res.sendStatus(200);
+});
+```
+
+Tips:
+- Don’t store or display the URL returned by `media.get()` directly; it expires quickly. Always download bytes or re‑resolve as needed.
+- Prefer storing your own durable URL (e.g., upload the bytes to your storage) or cache the bytes.
+- For videos/documents, the same `download()` helper applies; check the `mimeType` returned by `media.get()` or `Response.headers` when deciding how to render.
+
 ## Phone numbers
 
 ```ts
@@ -304,20 +410,47 @@ await client.phoneNumbers.businessProfile.update({ phoneNumberId: "<PHONE_NUMBER
 ## Webhooks
 
 ```ts
-import { verifySignature } from "@kapso/whatsapp-cloud-api/server";
+import express from "express";
+import { normalizeWebhook, verifySignature } from "@kapso/whatsapp-cloud-api/server";
 
 app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
   const ok = verifySignature({
     appSecret: process.env.META_APP_SECRET!,
-    rawBody: req.body, // Buffer
+    rawBody: req.body,
     signatureHeader: req.headers["x-hub-signature-256"] as string,
   });
   if (!ok) return res.status(401).end();
 
   const payload = JSON.parse(req.body.toString("utf8"));
-  // handle payload.entry[0].changes[...] etc.
+  const events = normalizeWebhook(payload);
+
+  events.messages.forEach((message) => {
+    // message matches the same shape returned by client.messages.query()
+  });
+
+  events.statuses.forEach((status) => {
+    // handle delivery receipts
+  });
+
+  events.calls.forEach((call) => {
+    // handle calling events
+  });
+
   res.sendStatus(200);
 });
+
+// events.contacts contains the contact array from the webhook, already camelCased
+```
+
+`normalizeWebhook()` unwraps the raw Graph payload, returning `{ messages, statuses, calls, contacts }` with camelCased fields so webhook events and history queries share the same Meta-compatible structure. Each normalized message also gets `kapso.direction` (`"inbound"`/`"outbound"`) and SMB echoes are tagged with `kapso.source = "smb_message_echo"` so you can tell when the business initiated a message. All other webhook `field` payloads are exposed under `events.raw.<fieldName>` (camelCased), so you can react to updates like `accountAlerts`, `templateCategoryUpdate`, etc., without additional parsing.
+
+## Raw fetch helper
+
+Use `client.fetch(url, init?)` to make a request to any absolute URL with the client’s auth headers applied. This is useful when you need to fetch a resource that is not a Graph/Kapso path, like the resolved media CDN URL.
+
+```ts
+// Sends Authorization (Meta) or X-API-Key (Kapso) automatically
+const resp = await client.fetch("https://files.example/resource", { headers: { Accept: "image/*" } });
 ```
 
 ### Framework notes
