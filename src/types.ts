@@ -113,7 +113,6 @@ export interface ConversationRecord {
   phoneNumberId?: string;
   status?: string;
   lastActiveAt?: string;
-  contactName?: string;
   kapso?: ConversationKapsoExtensions;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
