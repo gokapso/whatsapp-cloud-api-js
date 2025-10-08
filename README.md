@@ -5,12 +5,14 @@
 
 TypeScript client for the WhatsApp Business Cloud API. It provides typed request/response models, Zod‑validated builders for messages and templates, media helpers, phone‑number flows, and webhook signature verification.
 
-Optionally, you can route your calls through [Kapso](https://kapso.ai/)’s proxy by changing the `baseUrl` and auth header.
+Inputs are camelCase (client converts to Meta’s snake_case). Responses are camelCased for DX.
+
+Optionally, you can route calls through [Kapso](https://kapso.ai/)’s proxy by setting `baseUrl` + API key. Kapso adds storage/querying and extra fields, but Meta‑direct is the default.
 
 ## Choose your setup
 
 1. **Meta setup (~ 1 hour)** – Create a Meta WhatsApp app, generate a system or business token, and link a WhatsApp Business phone number in Meta Business Manager.
-2. **Kapso proxy (~ 2 minutes)** – Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
+2. **Kapso proxy (optional)** – Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
 
 ## Install
 
@@ -58,6 +60,7 @@ await client.messages.sendText({
 - `verifySignature` — verify webhook signatures (app secret)
 - `TemplateDefinition` — strict template creation builders
 - `buildTemplateSendPayload` — build send-time template payloads
+ - `buildTemplatePayload` — accept Meta-style raw `components` and normalize/camelize inputs
 
 ### Kapso proxy extras
  Requires `baseUrl` and `kapsoApiKey`.
@@ -192,6 +195,93 @@ await client.messages.sendInteractiveButtons({
   bodyText: "Pick an option",
   footerText: "Footer",
   buttons: [ { id: "accept", title: "Accept" }, { id: "decline", title: "Decline" } ]
+});
+```
+
+## Templates
+
+### Send-time (typed helper)
+
+Use `buildTemplateSendPayload` for typed, DX‑first building. Example with body parameters and a Flow button:
+
+```ts
+import { buildTemplateSendPayload } from '@kapso/whatsapp-cloud-api';
+
+const template = buildTemplateSendPayload({
+  name: 'order_confirmation',
+  language: 'en_US',
+  body: [
+    { type: 'text', text: 'Jessica' },
+    { type: 'text', text: 'SKBUP2-4CPIG9' }
+  ],
+  buttons: [
+    {
+      type: 'button',
+      subType: 'flow',
+      index: 0,
+      parameters: [{ type: 'action', action: { flow_token: 'FT_123', flow_action_data: { step: 'one' } } }]
+    }
+  ]
+});
+```
+
+### Send-time (raw Meta components)
+
+If you already have a Meta‑shape `components` array (e.g., from a CMS), use `buildTemplatePayload`:
+
+```ts
+import { buildTemplatePayload } from '@kapso/whatsapp-cloud-api';
+
+const template = buildTemplatePayload({
+  name: 'order_confirmation',
+  language: 'en_US', // or { code: 'en_US', policy: 'deterministic' }
+  components: [
+    { type: 'body', parameters: [{ type: 'text', text: 'Jessica' }] }
+  ]
+});
+```
+
+### Creation (strict builder)
+
+The creation builder validates components and examples like Meta’s review. Highlights:
+
+- Utility/Marketing text/media headers, body/footers, URL/Phone/Quick‑reply/COPY_CODE/Flow buttons.
+- Authentication templates: OTP buttons (COPY_CODE, ONE_TAP), `messageSendTtlSeconds`, `addSecurityRecommendation`, `codeExpirationMinutes`, `supportedApps`.
+- Limited‑time offer: `LIMITED_TIME_OFFER` component with `{ text, hasExpiration }`.
+- Commerce: Catalog button, MPM button, SPM buttons with product headers.
+- Carousels: Media‑card and product‑card with per‑card header and up to two buttons.
+
+Minimal examples:
+
+```ts
+import { buildTemplateDefinition } from '@kapso/whatsapp-cloud-api';
+
+// Authentication (copy code)
+const authTpl = buildTemplateDefinition({
+  name: 'authentication_code',
+  language: 'en_US',
+  category: 'AUTHENTICATION',
+  messageSendTtlSeconds: 60,
+  components: [
+    { type: 'BODY', addSecurityRecommendation: true },
+    { type: 'FOOTER', codeExpirationMinutes: 10 },
+    { type: 'BUTTONS', buttons: [{ type: 'OTP', otpType: 'COPY_CODE' }] }
+  ]
+});
+
+// Limited-time offer
+const lto = buildTemplateDefinition({
+  name: 'limited_offer', language: 'en_US', category: 'MARKETING',
+  components: [
+    { type: 'BODY', text: 'Hello {{1}}', example: { bodyText: [['Pablo']] } },
+    { type: 'LIMITED_TIME_OFFER', limitedTimeOffer: { text: 'Expiring!', hasExpiration: true } }
+  ]
+});
+
+// Catalog / MPM / SPM
+const catalog = buildTemplateDefinition({
+  name: 'catalog_push', language: 'en_US', category: 'MARKETING',
+  components: [ { type: 'BODY', text: 'Browse our catalog' }, { type: 'BUTTONS', buttons: [{ type: 'CATALOG', text: 'View catalog' }] } ]
 });
 ```
 
