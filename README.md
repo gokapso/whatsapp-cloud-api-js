@@ -5,8 +5,6 @@
 
 TypeScript client for the WhatsApp Business Cloud API. It provides typed request/response models, Zod‑validated builders for messages and templates, media helpers, phone‑number flows, and webhook signature verification.
 
-Inputs are camelCase (client converts to Meta’s snake_case). Responses are camelCased for DX.
-
 Optionally, you can route calls through [Kapso](https://kapso.ai/)’s proxy by setting `baseUrl` + API key. Kapso adds storage/querying and extra fields, but Meta‑direct is the default.
 
 ## Choose your setup
@@ -39,28 +37,18 @@ await client.messages.sendText({
 });
 ```
 
-## Features
-- Configurable base URL and auth: direct Meta Graph or Kapso proxy
-- Messages: text, media, location, contacts, reaction, templates, and rich interactive helpers (buttons, lists, products, flows, address, location request, call permission)
-- Templates: creation (strict validation for header/body/footer/buttons), send‑time parameter builders
-- Media: upload/get/delete
-- Phone numbers: request/verify code, register/deregister; settings and business profile
-- Historical data (Kapso proxy): conversations, message history, contacts, and call logs with Meta-compatible payloads and Graph cursor pagination
-- Webhooks: X‑Hub‑Signature‑256 verification helper
-- Modern build (ESM+CJS), TypeScript types, Zod validation
-
 ## API surface
 
 ### Core
 
-- `client.messages` — send text/media/interactive/templates and mark messages as read
-- `client.templates` — list/create/delete templates on your WABA
-- `client.media` — upload media, fetch metadata, delete media
-- `client.phoneNumbers` — request/verify code, register/deregister, settings, business profile
-- `verifySignature` — verify webhook signatures (app secret)
-- `TemplateDefinition` — strict template creation builders
-- `buildTemplateSendPayload` — build send-time template payloads
- - `buildTemplatePayload` — accept Meta-style raw `components` and normalize/camelize inputs
+- [`client.messages`](#sending-messages) — send text/media/interactive/templates and mark messages as read
+- [`client.templates`](#templates) — list/create/delete templates on your WABA
+- [`client.media`](#sending-messages) — upload media, fetch metadata, delete media
+- [`client.phoneNumbers`](docs/docs/whatsapp/typescript-sdk/phone-numbers.mdx) — request/verify code, register/deregister, settings, business profile
+- [`verifySignature`](docs/docs/whatsapp/typescript-sdk/utilities.mdx#webhooks) — verify webhook signatures (app secret)
+- [`TemplateDefinition`](#templates) — strict template creation builders
+- [`buildTemplateSendPayload`](#typed-builder-optional) — build send-time template payloads
+- [`buildTemplatePayload`](#build-with-components) — accept Meta-style raw `components` and normalize/camelize inputs
 
 ### Kapso proxy extras
  Requires `baseUrl` and `kapsoApiKey`.
@@ -100,6 +88,16 @@ Notes:
 ## Sending messages
 
 Below are concise examples for common message types. Assume `client` is created as shown above.
+
+### Text
+```ts
+await client.messages.sendText({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  body: "Hello!",
+  previewUrl: true // optional link preview
+});
+```
 
 ### Image
 
@@ -437,72 +435,6 @@ if (msg.type === "image" && msg.image?.id) {
 }
 ```
 
-Node (save to file):
-
-```ts
-import { writeFile } from "node:fs/promises";
-
-const buf = Buffer.from(await client.media.download({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" }) as ArrayBuffer);
-await writeFile("./downloaded.jpg", buf);
-```
-
-Browser (show as image):
-
-```ts
-const blob = await client.media.download({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>", as: "blob" });
-const url = URL.createObjectURL(blob);
-document.querySelector("img#preview")!.setAttribute("src", url);
-```
-
-Pass custom headers (if needed):
-
-```ts
-await client.media.download({
-  mediaId: "<MEDIA_ID>",
-  phoneNumberId: "<PHONE_NUMBER_ID>",
-  headers: { "User-Agent": "curl/7.64.1" }
-});
-```
-
-Webhook → download flow (Express, simplified):
-
-```ts
-import express from "express";
-import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
-import { normalizeWebhook, verifySignature } from "@kapso/whatsapp-cloud-api/server";
-
-const app = express();
-app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  if (!verifySignature({ appSecret: process.env.META_APP_SECRET!, rawBody: req.body, signatureHeader: req.headers["x-hub-signature-256"] as string })) {
-    return res.status(401).end();
-  }
-
-  const payload = JSON.parse(req.body.toString("utf8"));
-  const events = normalizeWebhook(payload);
-
-  for (const message of events.messages) {
-    if (message.image?.id) {
-      // ... download media, persist, etc.
-    }
-  }
-
-  const client = new WhatsAppClient({
-    // Use accessToken for Meta direct OR kapsoApiKey + baseUrl for Kapso proxy
-    accessToken: process.env.META_ACCESS_TOKEN,
-    // baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: process.env.KAPSO_API_KEY
-  });
-
-  // If you obtained a mediaId from the event:
-  // const bytes = await client.media.download({ mediaId, phoneNumberId: "<PHONE_NUMBER_ID>" });
-  res.sendStatus(200);
-});
-```
-
-Tips:
-- Don’t store or display the URL returned by `media.get()` directly; it expires quickly. Always download bytes or re‑resolve as needed.
-- Prefer storing your own durable URL (e.g., upload the bytes to your storage) or cache the bytes.
-- For videos/documents, the same `download()` helper applies; check the `mimeType` returned by `media.get()` or `Response.headers` when deciding how to render.
-
 ## Phone numbers
 
 ```ts
@@ -556,13 +488,8 @@ Use `client.fetch(url, init?)` to make a request to any absolute URL with the cl
 
 ```ts
 // Sends Authorization (Meta) or X-API-Key (Kapso) automatically
-const resp = await client.fetch("https://files.example/resource", { headers: { Accept: "image/*" } });
+const response = await client.fetch("https://files.example/resource", { headers: { Accept: "image/*" } });
 ```
-
-### Framework notes
-
-- Next.js / Remix / SvelteKit: import from `@kapso/whatsapp-cloud-api/server` only inside API routes or server actions. Do not import the server subpath in client components.
-- Cloudflare Workers / Vercel Edge / Workers-like runtimes: use only the universal entry; server subpath relies on Node `crypto`.
 
 ## Typed responses
 
@@ -571,21 +498,6 @@ const resp = await client.fetch("https://files.example/resource", { headers: { A
 
 ```ts
 const response = await client.request<MyType>("GET", "<path>", { responseType: "json" });
-```
-
-## Runtime & Compatibility
-
-- Universal entry has no Node builtins and works in Node 20.19+, browsers, and edge runtimes that provide WHATWG `fetch`/`FormData`.
-- Server subpath (`/server`) targets Node.js and imports Node builtins (e.g., `node:crypto`). Use it only on the server.
-- ESM and CJS builds are provided. The package is side‑effect free and supports tree‑shaking.
-
-## Migration
-
-If you previously imported `verifySignature` from the package root, update to the server subpath:
-
-```diff
-- import { verifySignature } from "@kapso/whatsapp-cloud-api"
-+ import { verifySignature } from "@kapso/whatsapp-cloud-api/server"
 ```
 
 ## Error handling
