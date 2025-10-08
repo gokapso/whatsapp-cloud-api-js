@@ -17,3 +17,4 @@ export {
   buildKapsoFields,
   buildKapsoMessageFields
 } from "./kapso";
+export { buildTemplatePayload } from "./resources/templates/raw";
