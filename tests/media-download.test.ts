@@ -58,6 +58,59 @@ describe("MediaResource.download", () => {
     expect([...view]).toEqual([1, 2, 3, 4]);
   });
 
+  it("honors auth: 'never' on lookaside (no Authorization header)", async () => {
+    const metaUrl = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=MEDIA_ID";
+    const { fetchMock, calls } = setupFetch([
+      // metadata
+      () => new Response(
+        JSON.stringify({ messaging_product: "whatsapp", url: metaUrl, mime_type: "image/png", id: "MEDIA_ID", sha256: "", file_size: "4" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      ),
+      // binary
+      () => new Response(new Uint8Array([5, 6, 7, 8]), { status: 200, headers: { "Content-Type": "image/png" } })
+    ]);
+
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const buf = await client.media.download({ mediaId: "MEDIA_ID", auth: "never" });
+    expect(buf).toBeInstanceOf(ArrayBuffer);
+    const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
+    expect(headers2["Authorization"]).toBeUndefined();
+  });
+
+  it("honors auth: 'always' on lookaside (Authorization present)", async () => {
+    const metaUrl = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=MEDIA2";
+    const { fetchMock, calls } = setupFetch([
+      // metadata
+      () => new Response(
+        JSON.stringify({ messaging_product: "whatsapp", url: metaUrl, mime_type: "image/jpeg", id: "MEDIA2", sha256: "", file_size: "4" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      ),
+      // binary
+      () => new Response(new Uint8Array([9, 9, 9, 9]), { status: 200, headers: { "Content-Type": "image/jpeg" } })
+    ]);
+
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    await client.media.download({ mediaId: "MEDIA2", auth: "always" });
+    const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
+    expect(headers2["Authorization"]).toBe("Bearer token");
+  });
+
+  it("honors auth: 'never' on Kapso host (no X-API-Key header)", async () => {
+    const kapsoUrl = "https://cdn.kapso.ai/media/abc";
+    const { fetchMock, calls } = setupFetch([
+      () => new Response(
+        JSON.stringify({ messaging_product: "whatsapp", url: kapsoUrl, mime_type: "image/png", id: "MEDIA3", sha256: "", file_size: "4" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      ),
+      () => new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { "Content-Type": "image/png" } })
+    ]);
+
+    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://app.kapso.ai/api/meta", fetch: fetchMock });
+    await client.media.download({ mediaId: "MEDIA3", phoneNumberId: "123", auth: "never" });
+    const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
+    expect(headers2["X-API-Key"]).toBeUndefined();
+  });
+
   it("downloads bytes via Kapso proxy requiring phoneNumberId and X-API-Key header", async () => {
     const cdnUrl = "https://cdn.kapso.ai/media/123";
     const { fetchMock, calls } = setupFetch([
