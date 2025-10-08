@@ -36,13 +36,17 @@ const queryHistorySchema = z
     since: z.string().optional(),
     until: z.string().optional(),
     conversationId: z.string().optional(),
-    page: z.number().int().positive().optional(),
-    perPage: z.number().int().positive().optional()
+    limit: z.number().int().positive().max(100).optional(),
+    after: z.string().optional(),
+    before: z.string().optional(),
+    fields: z.string().optional()
   })
   .passthrough();
 
 function cleanQuery(query: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined));
+  return Object.fromEntries(
+    Object.entries(query).filter(([, value]) => value !== undefined && value !== null)
+  );
 }
 
 /**
@@ -179,8 +183,15 @@ export class MessagesResource {
     });
   }
 
-  async listByConversation(input: { phoneNumberId: string; conversationId: string; page?: number; perPage?: number }): Promise<MessageListResponse> {
-    const { phoneNumberId, conversationId, page, perPage } = input;
-    return this.query({ phoneNumberId, conversationId, page, perPage });
+  async listByConversation(input: {
+    phoneNumberId: string;
+    conversationId: string;
+    limit?: number;
+    after?: string;
+    before?: string;
+    fields?: string;
+  }): Promise<MessageListResponse> {
+    const { phoneNumberId, conversationId, limit, after, before, fields } = input;
+    return this.query({ phoneNumberId, conversationId, limit, after, before, fields });
   }
 }

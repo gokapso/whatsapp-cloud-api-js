@@ -133,6 +133,17 @@ export class WhatsAppClient {
     return response;
   }
 
+  /**
+   * Perform a raw fetch to an absolute URL while automatically attaching the client's auth headers.
+   * This does not modify the URL or payload (no base URL or version prefixing, no case conversion).
+   */
+  async fetch(url: string | URL, init: Omit<RequestInit, "headers"> & { headers?: Record<string, string> } = {}): Promise<Response> {
+    const { headers: headerOverrides, ...rest } = init;
+    const headers = this.buildHeaders(headerOverrides);
+    const abs = typeof url === "string" ? url : url.toString();
+    return this.fetchImpl(abs, { ...rest, headers });
+  }
+
   private buildHeaders(overrides?: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = {};
 

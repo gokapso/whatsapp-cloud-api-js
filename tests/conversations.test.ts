@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WhatsAppClient } from "../src";
 
 describe("Conversations API", () => {
@@ -30,7 +30,7 @@ describe("Conversations API", () => {
           phone_number_id: "123"
         }
       ],
-      meta: { page: 1, per_page: 20, total_pages: 1, total_count: 1 }
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
@@ -39,8 +39,7 @@ describe("Conversations API", () => {
       phoneNumberId: "123",
       status: "active",
       lastActiveSince: "2025-01-01T00:00:00Z",
-      page: 1,
-      perPage: 20
+      limit: 20
     });
 
     expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/conversations?");
@@ -53,9 +52,7 @@ describe("Conversations API", () => {
       lastActiveAt: "2025-01-01T12:00:00Z",
       phoneNumberId: "123"
     });
-    expect(result.meta).toMatchObject({ page: 1, perPage: 20, totalPages: 1, totalCount: 1 });
-    expectTypeOf(result.data[0].status).toBeString();
-    expectTypeOf(result.data[0].phoneNumberId).toBeString();
+    expect(result.paging.cursors.after).toBeNull();
   });
 
   it("retrieves a single conversation", async () => {

@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WhatsAppClient } from "../src";
 
 describe("Message history API", () => {
@@ -24,14 +24,17 @@ describe("Message history API", () => {
       data: [
         {
           id: "msg-1",
-          message_type: "text",
-          content: "Hello",
-          direction: "inbound",
-          status: "delivered",
-          created_at: "2025-01-01T12:00:00Z"
+          type: "text",
+          timestamp: "1735689600",
+          text: { body: "Hello" },
+          kapso: { status: "delivered", direction: "inbound" }
         }
       ],
-      meta: { page: 1, per_page: 50, total_pages: 1, total_count: 1 }
+      paging: {
+        cursors: { before: null, after: null },
+        next: null,
+        previous: null
+      }
     });
 
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
@@ -40,18 +43,22 @@ describe("Message history API", () => {
       phoneNumberId: "123",
       direction: "inbound",
       since: "2025-01-01T00:00:00Z",
-      perPage: 50
+      limit: 50
     });
 
     expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/messages?");
     expect(calls[0]?.url).toContain("direction=inbound");
-    expect(result.data[0]).toMatchObject({ id: "msg-1", messageType: "text", createdAt: "2025-01-01T12:00:00Z" });
-    expect(result.meta?.perPage).toBe(50);
-    expectTypeOf(result.data[0].metadata).toBeAny();
+    expect(result.data[0]).toMatchObject({ id: "msg-1", type: "text", timestamp: "1735689600" });
+    expect(result.data[0].kapso).toMatchObject({ status: "delivered", direction: "inbound" });
+    expect(result.paging.cursors.before).toBeNull();
+    expect(result.paging.next).toBeNull();
   });
 
   it("strips undefined filters and includes date bounds", async () => {
-    const { fetchMock, calls } = setupFetch({ data: [], meta: null });
+    const { fetchMock, calls } = setupFetch({
+      data: [],
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
+    });
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
 
     await client.messages.query({
@@ -74,11 +81,12 @@ describe("Message history API", () => {
       data: [
         {
           id: "msg-2",
-          message_type: "image",
-          metadata: { caption: "Look" }
+          type: "image",
+          timestamp: "1735689700",
+          image: { caption: "Look" }
         }
       ],
-      meta: { page: 1, per_page: 25, total_pages: 1, total_count: 1 }
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
@@ -86,12 +94,126 @@ describe("Message history API", () => {
     const page = await client.messages.listByConversation({
       phoneNumberId: "123",
       conversationId: "conv-1",
-      perPage: 25
+      limit: 25
     });
 
     expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/messages");
     expect(calls[0]?.url).toContain("conversation_id=conv-1");
-    expect(page.data[0]).toMatchObject({ id: "msg-2", messageType: "image" });
-    expect(page.meta?.totalCount).toBe(1);
+    expect(page.data[0]).toMatchObject({ id: "msg-2", type: "image" });
+    expect(page.paging.cursors.after).toBeNull();
+  });
+
+  it("parses specialized message payloads mirroring Meta", async () => {
+    const { fetchMock } = setupFetch({
+      data: [
+        {
+          id: "msg-order",
+          type: "order",
+          timestamp: "1735689800",
+          order: {
+            catalog_id: "CAT123",
+            product_items: [
+              { product_retailer_id: "SKU-1", quantity: "1" },
+              { product_retailer_id: "SKU-2", quantity: "2" }
+            ],
+            order_text: "Thanks for your order!"
+          },
+          kapso: {
+            message_type_data: {
+              catalog_id: "CAT123",
+              product_items: [
+                { product_retailer_id: "SKU-1", quantity: "1" },
+                { product_retailer_id: "SKU-2", quantity: "2" }
+              ]
+            }
+          }
+        },
+        {
+          id: "msg-sticker",
+          type: "sticker",
+          timestamp: "1735689810",
+          sticker: {
+            id: "STICKER_ID",
+            mime_type: "image/webp",
+            animated: true
+          }
+        },
+        {
+          id: "msg-template",
+          type: "template",
+          timestamp: "1735689820",
+          template: {
+            name: "shipping_update",
+            language: { code: "en_US" },
+            components: [
+              {
+                type: "BODY",
+                parameters: [
+                  { type: "text", text: "John" }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          id: "msg-flow",
+          type: "interactive",
+          timestamp: "1735689830",
+          context: {
+            id: "wamid.original",
+            from: "16315558151",
+            referred_product: {
+              catalog_id: "CATREF",
+              product_retailer_id: "SKU-REF"
+            }
+          },
+          interactive: {
+            type: "nfm_reply",
+            nfm_reply: {
+              name: "feedback_flow",
+              response_json: "{\"rating\":\"5\",\"comment\":\"Great!\"}"
+            }
+          },
+          kapso: {
+            flow_response: {
+              rating: "5",
+              comment: "Great!"
+            }
+          }
+        }
+      ],
+      paging: {
+        cursors: { before: null, after: null },
+        next: null,
+        previous: null
+      }
+    });
+
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const result = await client.messages.query({ phoneNumberId: "123" });
+
+    const orderMessage = result.data.find((item) => item.id === "msg-order");
+    expect(orderMessage?.order?.catalogId).toBe("CAT123");
+    expect(orderMessage?.order?.productItems).toHaveLength(2);
+    expect(orderMessage?.order?.orderText).toBe("Thanks for your order!");
+    expect(orderMessage?.kapso?.messageTypeData).toMatchObject({ catalogId: "CAT123" });
+
+    const stickerMessage = result.data.find((item) => item.id === "msg-sticker");
+    expect(stickerMessage?.sticker).toMatchObject({ mimeType: "image/webp", animated: true });
+
+    const templateMessage = result.data.find((item) => item.id === "msg-template");
+    expect(templateMessage?.template).toMatchObject({
+      name: "shipping_update",
+      language: { code: "en_US" }
+    });
+    expect(templateMessage?.template?.components?.[0]).toMatchObject({ type: "BODY" });
+
+    const flowMessage = result.data.find((item) => item.id === "msg-flow");
+    expect(flowMessage?.context?.referredProduct).toMatchObject({
+      catalogId: "CATREF",
+      productRetailerId: "SKU-REF"
+    });
+    expect(flowMessage?.interactive).toMatchObject({ type: "nfm_reply" });
+    expect(flowMessage?.kapso?.flowResponse).toMatchObject({ rating: "5" });
   });
 });

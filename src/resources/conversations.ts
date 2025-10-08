@@ -9,8 +9,10 @@ const listSchema = z
     lastActiveSince: z.string().min(1).optional(),
     lastActiveUntil: z.string().min(1).optional(),
     phoneNumber: z.string().min(1).optional(),
-    page: z.number().int().positive().optional(),
-    perPage: z.number().int().positive().optional()
+    limit: z.number().int().positive().max(100).optional(),
+    after: z.string().optional(),
+    before: z.string().optional(),
+    fields: z.string().optional()
   })
   .passthrough();
 
@@ -22,7 +24,9 @@ const updateStatusSchema = z.object({
 });
 
 function cleanQuery(query: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined));
+  return Object.fromEntries(
+    Object.entries(query).filter(([, value]) => value !== undefined && value !== null)
+  );
 }
 
 /**

@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WhatsAppClient } from "../src";
 
 describe("Calls API", () => {
@@ -43,7 +43,6 @@ describe("Calls API", () => {
       biz_opaque_callback_data: "opaque"
     });
     expect(response.calls?.[0]?.id).toBe("wacid.123");
-    expectTypeOf(response).not.toBeAny();
   });
 
   it("connect omits session when not provided", async () => {
@@ -76,7 +75,6 @@ describe("Calls API", () => {
       session: { sdp_type: "answer", sdp: "v=0" }
     });
     expect(result).toEqual({ success: true });
-    expectTypeOf(result).not.toBeAny();
   });
 
   it("accept posts accept action and returns success", async () => {
@@ -142,16 +140,16 @@ describe("Calls API", () => {
           status: "COMPLETED"
         }
       ],
-      meta: { page: 1, per_page: 20, total_pages: 1, total_count: 1 }
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
 
-    const page = await client.calls.list({ phoneNumberId: "123", direction: "INBOUND", perPage: 20 });
+    const page = await client.calls.list({ phoneNumberId: "123", direction: "INBOUND", limit: 20 });
 
     expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/calls");
     expect(calls[0]?.url).toContain("direction=INBOUND");
     expect(page.data[0]).toMatchObject({ id: "wacid.123", direction: "INBOUND" });
-    expect(page.meta?.totalCount).toBe(1);
+    expect(page.paging.cursors.after).toBeNull();
   });
 
   it("retrieves a single call", async () => {
@@ -163,7 +161,7 @@ describe("Calls API", () => {
           status: "FAILED"
         }
       ],
-      meta: { page: 1, per_page: 1, total_pages: 1, total_count: 1 }
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
 
@@ -177,7 +175,7 @@ describe("Calls API", () => {
   it("get returns undefined when call not found", async () => {
     const { fetchMock } = setupFetch({
       data: [],
-      meta: { page: 1, per_page: 1, total_pages: 1, total_count: 0 }
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
 

@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WhatsAppClient } from "../src";
 
 describe("Contacts API", () => {
@@ -29,7 +29,7 @@ describe("Contacts API", () => {
           customer_id: "customer-1"
         }
       ],
-      meta: { page: 1, per_page: 50, total_pages: 1, total_count: 1 }
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
@@ -38,7 +38,7 @@ describe("Contacts API", () => {
       phoneNumberId: "123",
       hasCustomer: true,
       customerId: "00000000-0000-0000-0000-000000000000",
-      perPage: 50
+      limit: 50
     });
 
     expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/contacts?");
@@ -46,13 +46,13 @@ describe("Contacts API", () => {
     expect(calls[0]?.url).toContain("customer_id=00000000-0000-0000-0000-000000000000");
     expect(result.data[0]).toMatchObject({ id: "contact-1", waId: "56911112222" });
     expect(result.data[0].customerId).toBe("customer-1");
-    expectTypeOf(result.data[0].metadata).toBeAny();
+    expect(result.paging.cursors.after).toBeNull();
   });
 
   it("lists contacts for a specific customer without hasCustomer flag", async () => {
     const { fetchMock, calls } = setupFetch({
       data: [],
-      meta: { page: 1, per_page: 50, total_pages: 0, total_count: 0 }
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });

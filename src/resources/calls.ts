@@ -46,8 +46,10 @@ const listSchema = z
     since: z.string().optional(),
     until: z.string().optional(),
     callId: z.string().optional(),
-    page: z.number().int().positive().optional(),
-    perPage: z.number().int().positive().optional()
+    limit: z.number().int().positive().max(100).optional(),
+    after: z.string().optional(),
+    before: z.string().optional(),
+    fields: z.string().optional()
   })
   .passthrough();
 
@@ -143,7 +145,9 @@ export class CallsResource {
 
   async list(input: z.infer<typeof listSchema>): Promise<CallListResponse> {
     const { phoneNumberId, ...rest } = listSchema.parse(input);
-    const query = Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined));
+    const query = Object.fromEntries(
+      Object.entries(rest).filter(([, value]) => value !== undefined && value !== null)
+    );
     return this.client.request<CallListResponse>("GET", `${phoneNumberId}/calls`, {
       query,
       responseType: "json"
@@ -152,7 +156,7 @@ export class CallsResource {
 
   async get(input: z.infer<typeof getCallSchema>): Promise<CallRecord | undefined> {
     const { phoneNumberId, callId } = getCallSchema.parse(input);
-    const response = await this.list({ phoneNumberId, callId });
+    const response = await this.list({ phoneNumberId, callId, limit: 1 });
     return response.data[0];
   }
 }
