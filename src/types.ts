@@ -158,6 +158,7 @@ export interface KapsoMessageExtensions {
   phoneNumber?: string;
   hasMedia?: boolean;
   mediaData?: MediaData;
+  mediaUrl?: string;
   whatsappConversationId?: string;
   contactName?: string;
   messageTypeData?: Record<string, unknown>;

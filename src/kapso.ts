@@ -5,6 +5,7 @@ export const KAPSO_MESSAGE_FIELDS = [
   "phone_number",
   "has_media",
   "media_data",
+  "media_url",
   "whatsapp_conversation_id",
   "contact_name",
   "message_type_data",
