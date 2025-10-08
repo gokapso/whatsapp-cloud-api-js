@@ -20,7 +20,7 @@ describe("MediaResource.download", () => {
     return { fetchMock, calls } as const;
   }
 
-  it("downloads bytes from Meta URL using Authorization header (default: arrayBuffer)", async () => {
+  it("downloads bytes from Meta lookaside URL WITHOUT Authorization header (default: arrayBuffer)", async () => {
     const metaUrl = "https://lookaside.cdnwhatsapp.net/m/abc";
     const { fetchMock, calls } = setupFetch([
       // 1) GET metadata for media id
@@ -47,10 +47,10 @@ describe("MediaResource.download", () => {
 
     // call 1: metadata fetch
     expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/MEDIA_ID");
-    // call 2: direct URL fetch with auth header present
+    // call 2: direct URL fetch without auth header (lookaside rejects Authorization)
     expect(calls[1]?.url).toBe(metaUrl);
     const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
-    expect(headers2["Authorization"]).toBe("Bearer token");
+    expect(headers2["Authorization"]).toBeUndefined();
 
     // result is an ArrayBuffer by default
     expect(bytes).toBeInstanceOf(ArrayBuffer);
@@ -124,7 +124,7 @@ describe("MediaResource.download", () => {
     expect((blob as Blob).size).toBe(4);
   });
 
-  it("passes through custom headers when provided (e.g., User-Agent)", async () => {
+  it("passes through custom headers and skips Authorization on lookaside hosts", async () => {
     const metaUrl = "https://lookaside.cdnwhatsapp.net/m/ua";
     const { fetchMock, calls } = setupFetch([
       () => new Response(
@@ -138,7 +138,6 @@ describe("MediaResource.download", () => {
     await client.media.download({ mediaId: "MEDIA_ID", headers: { "User-Agent": "curl/7.64.1" } });
 
     const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
-    expect(headers2["Authorization"]).toBe("Bearer token");
     expect(headers2["User-Agent"]).toBe("curl/7.64.1");
   });
 
@@ -171,4 +170,3 @@ describe("MediaResource.download", () => {
     );
   });
 });
-

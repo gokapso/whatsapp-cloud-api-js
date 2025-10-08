@@ -84,7 +84,7 @@ export class MediaResource {
    * - Uses {@link get} to resolve the short-lived URL, then performs a raw fetch with client auth headers.
    * - Set `as` to control the return type. Defaults to `arrayBuffer`.
    */
-  async download(input: GetInput & { headers?: Record<string, string>; as?: "arrayBuffer" | "blob" | "response" }): Promise<ArrayBuffer | Blob | Response> {
+  async download(input: GetInput & { headers?: Record<string, string>; as?: "arrayBuffer" | "blob" | "response"; auth?: "auto" | "never" | "always" }): Promise<ArrayBuffer | Blob | Response> {
     const parsed = getSchema.parse(input);
 
     if (this.client.isKapsoProxy() && !parsed.phoneNumberId) {
@@ -92,9 +92,29 @@ export class MediaResource {
     }
 
     const metadata = await this.get({ mediaId: parsed.mediaId, phoneNumberId: parsed.phoneNumberId });
-    // "client.fetch" is not visible in the narrow type of WhatsAppClient; cast to access it.
-    const clientWithFetch = this.client as unknown as WhatsAppClient & { fetch: (url: string, init?: RequestInit & { headers?: Record<string, string> }) => Promise<Response> };
-    const res = await clientWithFetch.fetch(metadata.url, { headers: input.headers });
+    const url = new URL(metadata.url);
+    const host = url.hostname.toLowerCase();
+    const isKapsoHost = host.endsWith("kapso.ai");
+    const authMode = input.auth ?? "auto";
+    const clientWithFetch = this.client as unknown as WhatsAppClient & {
+      fetch: (url: string, init?: RequestInit & { headers?: Record<string, string> }) => Promise<Response>;
+      rawFetch: (url: string, init?: RequestInit) => Promise<Response>;
+    };
+
+    // Decide whether to attach auth headers when fetching the media URL
+    let res: Response;
+    const wantAuth = authMode === "always" || (authMode === "auto" && isKapsoHost);
+
+    if (wantAuth) {
+      res = await clientWithFetch.fetch(metadata.url, { headers: input.headers });
+    } else {
+      // No auth headers for public CDNs (e.g., lookaside.cdnwhatsapp.net)
+      res = await clientWithFetch.rawFetch(metadata.url, { headers: input.headers });
+      // Safety net: if Kapso host signals 401/403 and auto mode, retry once with auth
+      if ((res.status === 401 || res.status === 403) && authMode === "auto" && isKapsoHost) {
+        res = await clientWithFetch.fetch(metadata.url, { headers: input.headers });
+      }
+    }
 
     if (input.as === "response") return res;
     if (input.as === "blob") return res.blob();

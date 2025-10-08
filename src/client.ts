@@ -144,6 +144,15 @@ export class WhatsAppClient {
     return this.fetchImpl(abs, { ...rest, headers });
   }
 
+  /**
+   * Perform a raw fetch WITHOUT attaching auth headers.
+   * Useful for downloading media from public CDNs that reject Authorization headers.
+   */
+  async rawFetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
+    const abs = typeof url === "string" ? url : url.toString();
+    return this.fetchImpl(abs, init);
+  }
+
   private buildHeaders(overrides?: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = {};
 
