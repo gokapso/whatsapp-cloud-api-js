@@ -200,9 +200,25 @@ await client.messages.sendInteractiveButtons({
 
 ## Templates
 
-### Send-time (typed helper)
+### Templates (primary: raw components)
 
-Use `buildTemplateSendPayload` for typed, DX‑first building. Example with body parameters and a Flow button:
+Use `buildTemplatePayload` as the primary way to build templates. It accepts Meta‑style `components`, normalizes casing, and enforces shape (e.g., `language.policy = 'deterministic'` when using an object).
+
+```ts
+import { buildTemplatePayload } from '@kapso/whatsapp-cloud-api';
+
+const template = buildTemplatePayload({
+  name: 'order_confirmation',
+  language: 'en_US', // or { code: 'en_US', policy: 'deterministic' }
+  components: [
+    { type: 'body', parameters: [{ type: 'text', text: 'Jessica' }] }
+  ]
+});
+```
+
+### Typed builder (optional)
+
+Prefer typed guardrails? Use `buildTemplateSendPayload`. It outputs the same Meta structure but gives compile‑time guidance. Example with body parameters and a Flow button:
 
 ```ts
 import { buildTemplateSendPayload } from '@kapso/whatsapp-cloud-api';
@@ -221,22 +237,6 @@ const template = buildTemplateSendPayload({
       index: 0,
       parameters: [{ type: 'action', action: { flow_token: 'FT_123', flow_action_data: { step: 'one' } } }]
     }
-  ]
-});
-```
-
-### Send-time (raw Meta components)
-
-If you already have a Meta‑shape `components` array (e.g., from a CMS), use `buildTemplatePayload`:
-
-```ts
-import { buildTemplatePayload } from '@kapso/whatsapp-cloud-api';
-
-const template = buildTemplatePayload({
-  name: 'order_confirmation',
-  language: 'en_US', // or { code: 'en_US', policy: 'deterministic' }
-  components: [
-    { type: 'body', parameters: [{ type: 'text', text: 'Jessica' }] }
   ]
 });
 ```
