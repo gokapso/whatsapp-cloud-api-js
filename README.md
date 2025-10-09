@@ -38,7 +38,7 @@ Create a Meta WhatsApp app, generate a system token, and link a WhatsApp Busines
 
 2. **Kapso proxy (~ 2 minutes)**
 
-Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
+Have [Kapso](https://kapso.ai/) provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
 
 Query conversations, messages, contacts, and more.
 
