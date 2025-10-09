@@ -1,16 +1,9 @@
-# WhatsApp Cloud API TypeScript SDK
+# `whatsapp-cloud-api-js`
 
 [![npm version](https://img.shields.io/npm/v/@kapso/whatsapp-cloud-api.svg)](https://www.npmjs.com/package/@kapso/whatsapp-cloud-api)
 [![npm downloads](https://img.shields.io/npm/dm/@kapso/whatsapp-cloud-api.svg)](https://www.npmjs.com/package/@kapso/whatsapp-cloud-api)
 
-TypeScript client for the WhatsApp Business Cloud API. It provides typed request/response models, Zod‑validated builders for messages and templates, media helpers, phone‑number flows, and webhook signature verification.
-
-Optionally, you can route calls through [Kapso](https://kapso.ai/)’s proxy by setting `baseUrl` + API key. Kapso adds storage/querying and extra fields, but Meta‑direct is the default.
-
-## Choose your setup
-
-1. **Meta setup (~ 1 hour)** – Create a Meta WhatsApp app, generate a system or business token, and link a WhatsApp Business phone number in Meta Business Manager.
-2. **Kapso proxy (~ 2 minutes)** – Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
+TypeScript client for the WhatsApp Business Cloud API.
 
 ## Install
 
@@ -36,6 +29,18 @@ await client.messages.sendText({
   body: "Hello from Kapso",
 });
 ```
+
+## Choose your setup
+
+1. **Meta setup (~ 1 hour)**
+
+Create a Meta WhatsApp app, generate a system token, and link a WhatsApp Business phone number in Meta Business Manager.
+
+2. **Kapso proxy (~ 2 minutes)**
+
+Have Kapso provision and connect a WhatsApp number for you, then use your Kapso API key and base URL to begin sending immediately.
+
+Query conversations, messages, contacts, and more.
 
 ## API surface
 
@@ -70,21 +75,22 @@ const client = new WhatsAppClient({
 });
 ```
 
-Notes:
-- Media GET/DELETE requires `phoneNumberId` query on the proxy.
-- Responses mirror Meta’s Cloud API message schema. Kapso-only enrichments live under the `kapso` key; use the `fields` parameter (for example `fields: "kapso(flow_response,flow_token)"`) to opt into specific fields or `fields: "kapso()"` to omit them entirely.
-- You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
-
 ### Why Kapso?
 
 - Get a WhatsApp API for your number in ~2 minutes.
 - Built‑in inbox for your team.
-- Query conversations and messages.
+- Query conversations, messages and contacts.
 - Automatic backup to Supabase.
 - Webhooks for critical events: message received, message sent, conversation inactive, and more.
-- Provision US phone numbers for WhatsApp (works globally).
+- Get a US phone number for WhatsApp (works globally).
 - Multi‑tenant by design — onboard thousands of customers safely.
 - And more.
+
+Notes:
+- Media GET/DELETE requires `phoneNumberId` query on the proxy.
+- Responses mirror Meta’s Cloud API message schema.
+- Kapso-only enrichments live under the `kapso` key; use the `fields` parameter (for example `fields: "kapso(flow_response,flow_token)"`) to opt into specific fields or `fields: "kapso()"` to omit them entirely.
+- You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
 
 ## Sending messages
 
@@ -96,7 +102,6 @@ await client.messages.sendText({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
   body: "Hello!",
-  previewUrl: true // optional link preview
 });
 ```
 
@@ -107,7 +112,7 @@ By media ID:
 await client.messages.sendImage({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  image: { id: "<MEDIA_ID>", caption: "Check this out" }
+  image: { id: "<MEDIA_ID>", caption: "Check this out" },
 });
 ```
 
@@ -116,7 +121,7 @@ By link:
 await client.messages.sendImage({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  image: { link: "https://example.com/photo.jpg", caption: "Photo" }
+  image: { link: "https://example.com/photo.jpg", caption: "Photo" },
 });
 ```
 
@@ -125,7 +130,7 @@ await client.messages.sendImage({
 await client.messages.sendDocument({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  document: { link: "https://example.com/invoice.pdf", filename: "invoice.pdf", caption: "Invoice" }
+  document: { link: "https://example.com/invoice.pdf", filename: "invoice.pdf", caption: "Invoice" },
 });
 ```
 
@@ -134,7 +139,7 @@ await client.messages.sendDocument({
 await client.messages.sendVideo({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  video: { link: "https://example.com/clip.mp4", caption: "Clip" }
+  video: { link: "https://example.com/clip.mp4", caption: "Clip" },
 });
 ```
 
@@ -143,7 +148,7 @@ await client.messages.sendVideo({
 await client.messages.sendSticker({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  sticker: { id: "<MEDIA_ID>" }
+  sticker: { id: "<MEDIA_ID>" },
 });
 ```
 
@@ -152,7 +157,7 @@ await client.messages.sendSticker({
 await client.messages.sendLocation({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  location: { latitude: -33.45, longitude: -70.66, name: "Santiago", address: "CL" }
+  location: { latitude: -33.45, longitude: -70.66, name: "Santiago", address: "CL" },
 });
 ```
 
@@ -162,8 +167,8 @@ await client.messages.sendContacts({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
   contacts: [
-    { name: { formattedName: "John Doe" }, phones: [{ phone: "+15551234567", type: "WORK" }] }
-  ]
+    { name: { formattedName: "John Doe" }, phones: [{ phone: "+15551234567", type: "WORK" }] },
+  ],
 });
 ```
 
@@ -172,7 +177,7 @@ await client.messages.sendContacts({
 await client.messages.sendReaction({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  reaction: { messageId: "wamid......", emoji: "😀" }
+  reaction: { messageId: "wamid......", emoji: "😀" },
 });
 ```
 
@@ -181,7 +186,7 @@ await client.messages.sendReaction({
 await client.messages.markRead({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   messageId: "wamid......",
-  typingIndicator: { type: "text" }
+  typingIndicator: { type: "text" },
 });
 ```
 
@@ -193,7 +198,7 @@ await client.messages.sendInteractiveButtons({
   header: { type: "text", text: "Header" },
   bodyText: "Pick an option",
   footerText: "Footer",
-  buttons: [ { id: "accept", title: "Accept" }, { id: "decline", title: "Decline" } ]
+  buttons: [ { id: "accept", title: "Accept" }, { id: "decline", title: "Decline" } ],
 });
 ```
 
@@ -210,8 +215,8 @@ const template = buildTemplatePayload({
   name: 'order_confirmation',
   language: 'en_US', // or { code: 'en_US', policy: 'deterministic' }
   components: [
-    { type: 'body', parameters: [{ type: 'text', text: 'Jessica' }] }
-  ]
+    { type: 'body', parameters: [{ type: 'text', text: 'Jessica' }] },
+  ],
 });
 ```
 
@@ -227,16 +232,16 @@ const template = buildTemplateSendPayload({
   language: 'en_US',
   body: [
     { type: 'text', text: 'Jessica' },
-    { type: 'text', text: 'SKBUP2-4CPIG9' }
+    { type: 'text', text: 'SKBUP2-4CPIG9' },
   ],
   buttons: [
     {
       type: 'button',
       subType: 'flow',
       index: 0,
-      parameters: [{ type: 'action', action: { flow_token: 'FT_123', flow_action_data: { step: 'one' } } }]
-    }
-  ]
+      parameters: [{ type: 'action', action: { flow_token: 'FT_123', flow_action_data: { step: 'one' } } }],
+    },
+  ],
 });
 ```
 
@@ -258,8 +263,8 @@ const authenticationTemplate = buildTemplateDefinition({
   components: [
     { type: 'BODY', addSecurityRecommendation: true },
     { type: 'FOOTER', codeExpirationMinutes: 10 },
-    { type: 'BUTTONS', buttons: [{ type: 'OTP', otpType: 'COPY_CODE' }] }
-  ]
+    { type: 'BUTTONS', buttons: [{ type: 'OTP', otpType: 'COPY_CODE' }] },
+  ],
 });
 
 // Limited-time offer
@@ -267,14 +272,14 @@ const limitedTimeOfferTemplate = buildTemplateDefinition({
   name: 'limited_offer', language: 'en_US', category: 'MARKETING',
   components: [
     { type: 'BODY', text: 'Hello {{1}}', example: { bodyText: [['Pablo']] } },
-    { type: 'LIMITED_TIME_OFFER', limitedTimeOffer: { text: 'Expiring!', hasExpiration: true } }
-  ]
+    { type: 'LIMITED_TIME_OFFER', limitedTimeOffer: { text: 'Expiring!', hasExpiration: true } },
+  ],
 });
 
 // Catalog / MPM / SPM
 const catalogTemplate = buildTemplateDefinition({
   name: 'catalog_push', language: 'en_US', category: 'MARKETING',
-  components: [ { type: 'BODY', text: 'Browse our catalog' }, { type: 'BUTTONS', buttons: [{ type: 'CATALOG', text: 'View catalog' }] } ]
+  components: [ { type: 'BODY', text: 'Browse our catalog' }, { type: 'BUTTONS', buttons: [{ type: 'CATALOG', text: 'View catalog' }] } ],
 });
 ```
 
@@ -292,11 +297,11 @@ const client = new WhatsAppClient({
 const conversations = await client.conversations.list({
   phoneNumberId: "647015955153740",
   status: "active",
-  limit: 50
+  limit: 50,
 });
 
-const conversation = await client.conversations.get({ conversationId: conversations.data[0].id });
-await client.conversations.updateStatus({ conversationId: conversation.id, status: "ended" });
+const conversation = await client.conversations.get({ conversationId: conversations.data[0].id, });
+await client.conversations.updateStatus({ conversationId: conversation.id, status: "ended", });
 
 // Message history
 const history = await client.messages.query({
@@ -304,20 +309,20 @@ const history = await client.messages.query({
   direction: "inbound",
   since: "2025-01-01T00:00:00Z",
   limit: 50,
-  after: conversations.paging.cursors.after
+  after: conversations.paging.cursors.after,
 });
 
 // Contacts
-const contacts = await client.contacts.list({ phoneNumberId: "647015955153740", customerId: "123" });
+const contacts = await client.contacts.list({ phoneNumberId: "647015955153740", customerId: "123", });
 await client.contacts.update({
   phoneNumberId: "647015955153740",
   waId: contacts.data[0].waId,
-  metadata: { tags: ["vip"], source: "import" }
+  metadata: { tags: ["vip"], source: "import" },
 });
 
 // Call logs
-const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", limit: 20 });
-const call = await client.calls.get({ phoneNumberId: "647015955153740", callId: calls.data[0].id });
+const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", limit: 20, });
+const call = await client.calls.get({ phoneNumberId: "647015955153740", callId: calls.data[0].id, });
 ```
 
 All history endpoints return Meta-compatible records with Graph paging:
@@ -342,7 +347,7 @@ const templateDefinition = TemplateDefinition.buildTemplateDefinition({
     { type: "HEADER", format: "TEXT", text: "Our {{1}} is on!", example: { headerText: ["Summer Sale"] } },
     { type: "BODY", text: "Shop now through {{1}} using code {{2}}", example: { bodyText: [["Aug 31", "SALE25"]] } },
     { type: "FOOTER", text: "Tap a button below" },
-    { type: "BUTTONS", buttons: [ { type: "QUICK_REPLY", text: "Unsubscribe" }, { type: "URL", text: "Shop", url: "https://store.example/promo" } ] }
+    { type: "BUTTONS", buttons: [ { type: "QUICK_REPLY", text: "Unsubscribe" }, { type: "URL", text: "Shop", url: "https://store.example/promo" } ] },
   ],
 });
 
@@ -379,9 +384,9 @@ await client.messages.sendTemplate({
 
 ```ts
 const imageBlob = new Blob([/* binary data */], { type: "image/png" });
-await client.media.upload({ phoneNumberId: "<PHONE_NUMBER_ID>", type: "image", file: imageBlob, fileName: "photo.png" });
-const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" }); // Kapso requires phoneNumberId
-await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>" });
+await client.media.upload({ phoneNumberId: "<PHONE_NUMBER_ID>", type: "image", file: imageBlob, fileName: "photo.png", });
+const metadata = await client.media.get({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>", }); // Kapso requires phoneNumberId
+await client.media.delete({ mediaId: "<MEDIA_ID>", phoneNumberId: "<PHONE_NUMBER_ID>", });
 ```
 
 ### Receiving media
@@ -399,7 +404,7 @@ const fields = buildKapsoMessageFields("media_url");
 const page = await client.messages.listByConversation({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   conversationId: "<CONVERSATION_ID>",
-  fields
+  fields,
 });
 
 const msg = page.data.find(m => m.type === "image");
@@ -420,12 +425,12 @@ Examples:
 
 ```ts
 // 1) From a message record you loaded (e.g., via client.messages.query):
-const { data } = await client.messages.query({ phoneNumberId: "<PHONE_NUMBER_ID>", limit: 1 });
+const { data } = await client.messages.query({ phoneNumberId: "<PHONE_NUMBER_ID>", limit: 1, });
 const msg = data[0];
 
 if (msg.type === "image" && msg.image?.id) {
   const mediaId = msg.image.id;
-  const bytes = await client.media.download({ mediaId, phoneNumberId: "<PHONE_NUMBER_ID>" });
+  const bytes = await client.media.download({ mediaId, phoneNumberId: "<PHONE_NUMBER_ID>", });
   // bytes is an ArrayBuffer; do what you need with it
 }
 ```
@@ -433,11 +438,11 @@ if (msg.type === "image" && msg.image?.id) {
 ## Phone numbers
 
 ```ts
-await client.phoneNumbers.requestCode({ phoneNumberId: "<PHONE_NUMBER_ID>", codeMethod: "SMS", language: "en_US" });
-await client.phoneNumbers.verifyCode({ phoneNumberId: "<PHONE_NUMBER_ID>", code: "123456" });
-await client.phoneNumbers.register({ phoneNumberId: "<PHONE_NUMBER_ID>", pin: "000111" });
-await client.phoneNumbers.settings.update({ phoneNumberId: "<PHONE_NUMBER_ID>", fallbackLanguage: "en_US" });
-await client.phoneNumbers.businessProfile.update({ phoneNumberId: "<PHONE_NUMBER_ID>", about: "My Shop", websites: ["https://example.com"] });
+await client.phoneNumbers.requestCode({ phoneNumberId: "<PHONE_NUMBER_ID>", codeMethod: "SMS", language: "en_US", });
+await client.phoneNumbers.verifyCode({ phoneNumberId: "<PHONE_NUMBER_ID>", code: "123456", });
+await client.phoneNumbers.register({ phoneNumberId: "<PHONE_NUMBER_ID>", pin: "000111", });
+await client.phoneNumbers.settings.update({ phoneNumberId: "<PHONE_NUMBER_ID>", fallbackLanguage: "en_US", });
+await client.phoneNumbers.businessProfile.update({ phoneNumberId: "<PHONE_NUMBER_ID>", about: "My Shop", websites: ["https://example.com"], });
 ```
 
 ## Webhooks
@@ -483,7 +488,7 @@ Use `client.fetch(url, init?)` to make a request to any absolute URL with the cl
 
 ```ts
 // Sends Authorization (Meta) or X-API-Key (Kapso) automatically
-const response = await client.fetch("https://files.example/resource", { headers: { Accept: "image/*" } });
+const response = await client.fetch("https://files.example/resource", { headers: { Accept: "image/*" }, });
 ```
 
 ## Typed responses
@@ -492,7 +497,7 @@ const response = await client.fetch("https://files.example/resource", { headers:
 - You can also call the low-level client with typing:
 
 ```ts
-const response = await client.request<MyType>("GET", "<path>", { responseType: "json" });
+const response = await client.request<MyType>("GET", "<path>", { responseType: "json", });
 ```
 
 ## Error handling
