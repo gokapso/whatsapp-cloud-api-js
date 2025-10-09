@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@kapso/whatsapp-cloud-api.svg)](https://www.npmjs.com/package/@kapso/whatsapp-cloud-api)
 [![npm downloads](https://img.shields.io/npm/dm/@kapso/whatsapp-cloud-api.svg)](https://www.npmjs.com/package/@kapso/whatsapp-cloud-api)
 
-TypeScript client for the WhatsApp Business Cloud API.
+TypeScript client for the WhatsApp Cloud API.
 
 ## Install
 
