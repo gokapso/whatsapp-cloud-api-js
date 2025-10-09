@@ -1018,14 +1018,17 @@ describe("buildTemplatePayload", () => {
     ).toThrowError(/components\[0\]\.type is required/);
   });
 
-  it("rejects empty components array", () => {
-    expect(() =>
-      buildTemplatePayload({
-        name: "welcome_to_kapso_v2",
-        language: "en_US",
-        components: []
-      })
-    ).toThrowError(/components/i);
+  it("accepts empty components array for parameterless templates", () => {
+    const payload = buildTemplatePayload({
+      name: "welcome_to_kapso_v2",
+      language: "en_US",
+      components: []
+    });
+    expect(payload).toEqual({
+      name: "welcome_to_kapso_v2",
+      language: { code: "en_US" },
+      components: []
+    });
   });
 
   it("preserves unknown keys on component parameters", () => {

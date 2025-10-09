@@ -15,7 +15,8 @@ const rawTemplatePayloadSchema = z
       z.string().min(1),
       z.object({ code: z.string().min(1), policy: z.literal("deterministic") }).strict()
     ]),
-    components: z.array(rawComponentSchema).min(1)
+    // Allow parameterless templates: components can be an empty array
+    components: z.array(rawComponentSchema)
   })
   .strict();
 
