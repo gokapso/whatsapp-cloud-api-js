@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { WhatsAppClient } from "../../client";
 import type { MessageListResponse, SendMessageResponse } from "../../types";
+import { assertKapsoProxy } from "../shared";
 import { MessageTransport } from "./base";
 import type { GraphSuccessResponse } from "../../types";
 import { TextMessageSender } from "./text";
@@ -175,6 +176,7 @@ export class MessagesResource {
   }
 
   async query(input: z.infer<typeof queryHistorySchema>): Promise<MessageListResponse> {
+    assertKapsoProxy(this.client, "Message history API");
     const { phoneNumberId, ...rest } = queryHistorySchema.parse(input);
     const query = cleanQuery(rest);
     return this.client.request<MessageListResponse>("GET", `${phoneNumberId}/messages`, {
@@ -191,6 +193,7 @@ export class MessagesResource {
     before?: string;
     fields?: string;
   }): Promise<MessageListResponse> {
+    assertKapsoProxy(this.client, "Message history API");
     const { phoneNumberId, conversationId, limit, after, before, fields } = input;
     return this.query({ phoneNumberId, conversationId, limit, after, before, fields });
   }

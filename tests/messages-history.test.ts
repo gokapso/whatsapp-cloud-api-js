@@ -37,7 +37,7 @@ describe("Message history API", () => {
       }
     });
 
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     const result = await client.messages.query({
       phoneNumberId: "123",
@@ -46,7 +46,7 @@ describe("Message history API", () => {
       limit: 50
     });
 
-    expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/messages?");
+    expect(calls[0]?.url).toContain("/v23.0/123/messages?");
     expect(calls[0]?.url).toContain("direction=inbound");
     expect(result.data[0]).toMatchObject({ id: "msg-1", type: "text", timestamp: "1735689600" });
     expect(result.data[0].kapso).toMatchObject({ status: "delivered", direction: "inbound" });
@@ -59,7 +59,7 @@ describe("Message history API", () => {
       data: [],
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     await client.messages.query({
       phoneNumberId: "123",
@@ -89,7 +89,7 @@ describe("Message history API", () => {
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     const page = await client.messages.listByConversation({
       phoneNumberId: "123",
@@ -97,7 +97,7 @@ describe("Message history API", () => {
       limit: 25
     });
 
-    expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/messages");
+    expect(calls[0]?.url).toContain("/v23.0/123/messages");
     expect(calls[0]?.url).toContain("conversation_id=conv-1");
     expect(page.data[0]).toMatchObject({ id: "msg-2", type: "image" });
     expect(page.paging.cursors.after).toBeNull();
@@ -189,7 +189,7 @@ describe("Message history API", () => {
       }
     });
 
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
     const result = await client.messages.query({ phoneNumberId: "123" });
 
     const orderMessage = result.data.find((item) => item.id === "msg-order");

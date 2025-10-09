@@ -34,7 +34,7 @@ describe("Message media fields selector", () => {
     };
 
     const { fetchMock, calls } = setupFetch(payload);
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     const fields = buildKapsoMessageFields("media_url");
     const page = await client.messages.listByConversation({

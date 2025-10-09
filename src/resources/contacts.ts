@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { WhatsAppClient } from "../client";
+import { assertKapsoProxy } from "./shared";
 import type { ContactListResponse, ContactRecord, GraphSuccessResponse } from "../types";
 
 const listSchema = z
@@ -47,6 +48,7 @@ export class ContactsResource {
   constructor(private readonly client: Pick<WhatsAppClient, "request">) {}
 
   async list(input: z.infer<typeof listSchema>): Promise<ContactListResponse> {
+    assertKapsoProxy(this.client as unknown as { isKapsoProxy(): boolean }, "Contacts API");
     const { phoneNumberId, ...rest } = listSchema.parse(input);
     const query = cleanQuery(rest);
     return this.client.request<ContactListResponse>("GET", `${phoneNumberId}/contacts`, {
@@ -56,6 +58,7 @@ export class ContactsResource {
   }
 
   async get(input: z.infer<typeof getSchema>): Promise<ContactRecord> {
+    assertKapsoProxy(this.client as unknown as { isKapsoProxy(): boolean }, "Contacts API");
     const { phoneNumberId, waId } = getSchema.parse(input);
     const response = await this.client.request<ContactRecord | { data: ContactRecord }>(
       "GET",
@@ -71,6 +74,7 @@ export class ContactsResource {
   }
 
   async update(input: z.infer<typeof updateSchema>): Promise<GraphSuccessResponse> {
+    assertKapsoProxy(this.client as unknown as { isKapsoProxy(): boolean }, "Contacts API");
     const { phoneNumberId, waId, ...body } = updateSchema.parse(input);
     return this.client.request<GraphSuccessResponse>("PATCH", `${phoneNumberId}/contacts/${waId}`, {
       body,

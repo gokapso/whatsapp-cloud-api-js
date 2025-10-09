@@ -9,7 +9,7 @@ export { ConversationsResource } from "./resources/conversations";
 export { ContactsResource } from "./resources/contacts";
 export * as TemplateDefinition from "./resources/templates/definition";
 export { buildTemplateSendPayload, templateSendInputSchema } from "./resources/templates/send";
-export { GraphApiError } from "./errors";
+export { GraphApiError, KapsoProxyRequiredError } from "./errors";
 export type { ErrorCategory, RetryHint, RetryAction } from "./errors";
 export * from "./types";
 export {

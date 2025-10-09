@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { WhatsAppClient } from "../client";
+import { assertKapsoProxy } from "./shared";
 import type {
   CallActionResponse,
   CallConnectResponse,
@@ -63,7 +64,7 @@ const getCallSchema = z.object({
  * @category Calls
  */
 export class CallsResource {
-  constructor(private readonly client: Pick<WhatsAppClient, "request">) {}
+  constructor(private readonly client: WhatsAppClient) {}
 
   async connect(input: z.infer<typeof connectSchema>): Promise<CallConnectResponse> {
     const { phoneNumberId, to, session, bizOpaqueCallbackData } = connectSchema.parse(input);
@@ -144,6 +145,7 @@ export class CallsResource {
   };
 
   async list(input: z.infer<typeof listSchema>): Promise<CallListResponse> {
+    assertKapsoProxy(this.client, "Calls history API");
     const { phoneNumberId, ...rest } = listSchema.parse(input);
     const query = Object.fromEntries(
       Object.entries(rest).filter(([, value]) => value !== undefined && value !== null)
@@ -155,6 +157,7 @@ export class CallsResource {
   }
 
   async get(input: z.infer<typeof getCallSchema>): Promise<CallRecord | undefined> {
+    assertKapsoProxy(this.client, "Calls history API");
     const { phoneNumberId, callId } = getCallSchema.parse(input);
     const response = await this.list({ phoneNumberId, callId, limit: 1 });
     return response.data[0];

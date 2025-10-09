@@ -1,4 +1,5 @@
 import { GraphApiError } from "../errors";
+import { KapsoProxyRequiredError } from "../errors";
 import { toCamelCaseDeep } from "../utils/case";
 
 export async function parseJsonResponse<T>(response: Response): Promise<T> {
@@ -35,5 +36,28 @@ export async function safeReadText(response: Response) {
     return await response.text();
   } catch (error) {
     return String(error);
+  }
+}
+
+/** Guard that ensures a Kapso-only feature is being used with the Kapso proxy base URL. */
+export function assertKapsoProxy(client: unknown, feature: string): void {
+  try {
+    const c = client as { isKapsoProxy?: () => boolean } & { baseUrl?: string };
+    const isKapso = typeof c?.isKapsoProxy === "function" ? c.isKapsoProxy() : inferKapsoFromBaseUrl(c?.baseUrl);
+    if (!isKapso) {
+      throw new KapsoProxyRequiredError(feature);
+    }
+  } catch {
+    throw new KapsoProxyRequiredError(feature);
+  }
+}
+
+function inferKapsoFromBaseUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false;
+  try {
+    const host = new URL(baseUrl).hostname;
+    return host.endsWith("kapso.ai");
+  } catch {
+    return false;
   }
 }

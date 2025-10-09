@@ -33,7 +33,7 @@ describe("Conversations API", () => {
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     const result = await client.conversations.list({
       phoneNumberId: "123",
@@ -42,7 +42,7 @@ describe("Conversations API", () => {
       limit: 20
     });
 
-    expect(calls[0]?.url).toContain("https://graph.facebook.com/v23.0/123/conversations?");
+    expect(calls[0]?.url).toContain("/v23.0/123/conversations?");
     expect(calls[0]?.url).toContain("status=active");
     expect(calls[0]?.url).toContain("last_active_since=2025-01-01T00%3A00%3A00Z");
     expect(result.data[0]).toMatchObject({
@@ -65,11 +65,11 @@ describe("Conversations API", () => {
       }
     });
 
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     const conversation = await client.conversations.get({ conversationId: "conv-1" });
 
-    expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/conversations/conv-1");
+    expect(calls[0]?.url).toContain("/v23.0/conversations/conv-1");
     expect(conversation).toMatchObject({ id: "conv-1", phoneNumber: "+15551234567", phoneNumberId: "123" });
     expectTypeOf(conversation.status).toBeString();
   });
@@ -82,7 +82,7 @@ describe("Conversations API", () => {
       phone_number_id: "456"
     });
 
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     const conversation = await client.conversations.get({ conversationId: "conv-2" });
 
@@ -96,11 +96,11 @@ describe("Conversations API", () => {
 
   it("updates conversation status", async () => {
     const { fetchMock, calls } = setupFetch({ success: true });
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
 
     const response = await client.conversations.updateStatus({ conversationId: "conv-1", status: "ended" });
 
-    expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/conversations/conv-1");
+    expect(calls[0]?.url).toContain("/v23.0/conversations/conv-1");
     expect(JSON.parse(String(calls[0]?.init.body))).toMatchObject({ status: "ended" });
     expect(response).toEqual({ success: true });
   });
@@ -129,7 +129,7 @@ describe("Conversations API", () => {
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
-    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
     const page = await client.conversations.list({ phoneNumberId: "123", limit: 1, fields: "kapso(contact_name)" });
     const conv = page.data[0];
     expect(conv.kapso?.contactName).toBe("Alice");
