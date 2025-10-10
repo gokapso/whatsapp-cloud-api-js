@@ -7,6 +7,13 @@ export { PhoneNumbersResource } from "./resources/phone-numbers";
 export { CallsResource } from "./resources/calls";
 export { ConversationsResource } from "./resources/conversations";
 export { ContactsResource } from "./resources/contacts";
+export { FlowsResource } from "./resources/flows";
+export type {
+  CreateFlowResponse,
+  FlowValidationError,
+  FlowValidationPointer,
+  DeployResult
+} from "./resources/flows";
 export * as TemplateDefinition from "./resources/templates/definition";
 export { buildTemplateSendPayload, templateSendInputSchema } from "./resources/templates/send";
 export { GraphApiError, KapsoProxyRequiredError } from "./errors";

@@ -50,7 +50,9 @@ Query conversations, messages, contacts, and more.
 - [`client.templates`](#templates) — list/create/delete templates on your WABA
 - [`client.media`](#sending-messages) — upload media, fetch metadata, delete media
 - [`client.phoneNumbers`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/phone-numbers) — request/verify code, register/deregister, settings, business profile
+- [`client.flows`](#flows) — author, validate, deploy, and preview WhatsApp Flows
 - [`verifySignature`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/utilities#webhooks) — verify webhook signatures (app secret)
+- `receiveFlowEvent`, `respondToFlow`, `downloadFlowMedia` — decrypt and respond to Flow callbacks
 - [`TemplateDefinition`](#templates) — strict template creation builders
 - [`buildTemplateSendPayload`](#typed-builder-optional) — build send-time template payloads
 - [`buildTemplatePayload`](#build-with-components) — accept Meta-style raw `components` and normalize/camelize inputs
@@ -201,6 +203,74 @@ await client.messages.sendInteractiveButtons({
   buttons: [ { id: "accept", title: "Accept" }, { id: "decline", title: "Decline" } ],
 });
 ```
+
+## Flows
+
+Build WhatsApp Flows directly in TypeScript/JavaScript. Highlights:
+
+- **CamelCase authoring** — write Flow JSON with camelCase keys; the SDK converts to Meta’s mixed-case wire format for you.
+- **End-to-end helpers** — `client.flows.create/updateAsset/publish/deploy/preview/get/list` cover the full lifecycle, including idempotent deploys and preview URL retrieval.
+- **Server utilities** — `receiveFlowEvent`, `respondToFlow`, and `downloadFlowMedia` decrypt Data Endpoint callbacks, normalize payloads to camelCase, and handle PhotoPicker/DocumentPicker media.
+- **Validation hints** — Meta validation errors are surfaced with camelCase pointers and DX-friendly hints when common casing mistakes occur.
+
+Quick example:
+
+```ts
+import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
+
+const flowJson = {
+  version: "7.2",
+  screens: [
+    {
+      id: "CSAT",
+      terminal: true,
+      layout: {
+        type: "SingleColumnLayout",
+        children: [
+          { type: "RadioButtonsGroup", name: "rating", label: "Rate us", dataSource: [
+            { id: "up", title: "👍" },
+            { id: "down", title: "👎" }
+          ] },
+          { type: "Footer", label: "Submit", onClickAction: { name: "complete", payload: { rating: "${form.rating}" } } }
+        ]
+      }
+    }
+  ]
+};
+
+const client = new WhatsAppClient({ accessToken: process.env.WHATSAPP_TOKEN! });
+
+await client.flows.deploy(flowJson, {
+  wabaId: process.env.WABA_ID!,
+  name: "csat-flow",
+  publish: true,
+  preview: true
+});
+```
+
+### Send a Flow message
+```ts
+import { WhatsAppClient, type FlowInteractiveInput } from "@kapso/whatsapp-cloud-api";
+
+const client = new WhatsAppClient({ accessToken: process.env.WHATSAPP_TOKEN! });
+
+await client.messages.sendInteractiveFlow({
+  phoneNumberId: "1234567890",
+  to: "+15551234567",
+  bodyText: "Check out our new experience",
+  parameters: {
+    flowId: "1234567890",
+    flowCta: "Open",
+    flowToken: "token123",
+    flowAction: "navigate",
+    flowActionPayload: { screen: "WELCOME" }
+  }
+});
+```
+
+> `flowCta` is required by Meta. `flowMessageVersion` defaults to `"3"` when omitted.
+
+For a full walkthrough (authoring guidance, deployment scripts, Express/Edge examples, and manual testing tips) see [docs/flows.md](./docs/flows.md).
 
 ## Templates
 
