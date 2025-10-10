@@ -48,6 +48,8 @@ export interface UpdateFlowAssetOptions {
   flowId: string;
   json?: Record<string, unknown>;
   file?: Blob | File | ArrayBuffer | ArrayBufferView;
+  phoneNumberId?: string;
+  businessAccountId?: string;
 }
 
 export interface DeployFlowOptions {
@@ -109,7 +111,7 @@ export class FlowsResource {
   }
 
   async updateAsset(options: UpdateFlowAssetOptions): Promise<{ success: boolean; validationErrors?: FlowValidationError[] }> {
-    const { flowId, json, file } = options;
+    const { flowId, json, file, phoneNumberId, businessAccountId } = options;
     if (!json && !file) {
       throw new Error("Must supply either json or file when updating a Flow asset");
     }
@@ -132,8 +134,13 @@ export class FlowsResource {
     form.append("name", "flow.json");
     form.append("asset_type", "FLOW_JSON");
 
+    const query: Record<string, unknown> = {};
+    if (phoneNumberId) query.phoneNumberId = phoneNumberId;
+    if (businessAccountId) query.businessAccountId = businessAccountId;
+
     const response = await this.client.request("POST", `/${flowId}/assets`, {
       body: form,
+      query: Object.keys(query).length ? query : undefined,
       responseType: "json"
     }) as { success: boolean; validation_errors?: unknown; validationErrors?: unknown };
 
@@ -143,23 +150,35 @@ export class FlowsResource {
     };
   }
 
-  async publish(options: { flowId: string }): Promise<{ success: boolean }> {
-    return this.client.request("POST", `/${options.flowId}/publish`, {
+  async publish(options: { flowId: string; phoneNumberId?: string; businessAccountId?: string }): Promise<{ success: boolean }> {
+    const { flowId, phoneNumberId, businessAccountId } = options;
+    const query: Record<string, unknown> = {};
+    if (phoneNumberId) query.phoneNumberId = phoneNumberId;
+    if (businessAccountId) query.businessAccountId = businessAccountId;
+    return this.client.request("POST", `/${flowId}/publish`, {
+      query: Object.keys(query).length ? query : undefined,
       responseType: "json"
     }) as Promise<{ success: boolean }>;
   }
 
-  async deprecate(options: { flowId: string }): Promise<{ success: boolean }> {
-    return this.client.request("POST", `/${options.flowId}/deprecate`, {
+  async deprecate(options: { flowId: string; phoneNumberId?: string; businessAccountId?: string }): Promise<{ success: boolean }> {
+    const { flowId, phoneNumberId, businessAccountId } = options;
+    const query: Record<string, unknown> = {};
+    if (phoneNumberId) query.phoneNumberId = phoneNumberId;
+    if (businessAccountId) query.businessAccountId = businessAccountId;
+    return this.client.request("POST", `/${flowId}/deprecate`, {
+      query: Object.keys(query).length ? query : undefined,
       responseType: "json"
     }) as Promise<{ success: boolean }>;
   }
 
-  async preview(options: { flowId: string; interactive?: boolean; params?: Record<string, unknown> }): Promise<{ preview: { previewUrl: string; expiresAt: string } }> {
-    const { flowId, interactive, params } = options;
-    const field = interactive ? "preview.invalidate(false)" : "preview";
-    const queryParams: Record<string, unknown> = { fields: field };
+  async preview(options: { flowId: string; interactive?: boolean; fields?: string; params?: Record<string, unknown>; phoneNumberId?: string; businessAccountId?: string }): Promise<{ preview: { previewUrl: string; expiresAt: string } }> {
+    const { flowId, interactive, fields, params, phoneNumberId, businessAccountId } = options;
+    const resolvedFields = fields ?? (interactive ? "preview.invalidate(false)" : "preview");
+    const queryParams: Record<string, unknown> = { fields: resolvedFields };
     if (params) Object.assign(queryParams, params);
+    if (phoneNumberId) queryParams.phoneNumberId = phoneNumberId;
+    if (businessAccountId) queryParams.businessAccountId = businessAccountId;
 
     const response = await this.client.request("GET", `/${flowId}`, {
       query: queryParams,
