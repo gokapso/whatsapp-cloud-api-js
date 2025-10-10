@@ -7,6 +7,7 @@ import { toSnakeCaseDeep } from "./utils/case";
 import { CallsResource } from "./resources/calls";
 import { ConversationsResource } from "./resources/conversations";
 import { ContactsResource } from "./resources/contacts";
+import { FlowsResource } from "./resources/flows";
 
 /**
  * Configuration for {@link WhatsAppClient}.
@@ -55,6 +56,7 @@ export class WhatsAppClient {
   public readonly calls: CallsResource;
   public readonly conversations: ConversationsResource;
   public readonly contacts: ContactsResource;
+  public readonly flows: FlowsResource;
   private readonly accessToken?: string;
   private readonly kapsoApiKey?: string;
   private readonly baseUrl: string;
@@ -85,6 +87,7 @@ export class WhatsAppClient {
     this.calls = new CallsResource(this);
     this.conversations = new ConversationsResource(this);
     this.contacts = new ContactsResource(this);
+    this.flows = new FlowsResource(this);
   }
 
   isKapsoProxy(): boolean {
