@@ -206,14 +206,9 @@ await client.messages.sendInteractiveButtons({
 
 ## Flows
 
-Build WhatsApp Flows directly in TypeScript/JavaScript. Highlights:
+Use `client.flows.deploy()` for idempotent deployments, or `create/updateAsset/publish/preview` for granular control. Server utilities (`receiveFlowEvent`, `respondToFlow`, `downloadFlowMedia`) handle Data Endpoint callbacks.
 
-- **CamelCase authoring** — write Flow JSON with camelCase keys; the SDK converts to Meta’s mixed-case wire format for you.
-- **End-to-end helpers** — `client.flows.create/updateAsset/publish/deploy/preview/get/list` cover the full lifecycle, including idempotent deploys and preview URL retrieval.
-- **Server utilities** — `receiveFlowEvent`, `respondToFlow`, and `downloadFlowMedia` decrypt Data Endpoint callbacks, normalize payloads to camelCase, and handle PhotoPicker/DocumentPicker media.
-- **Validation hints** — Meta validation errors are surfaced with camelCase pointers and DX-friendly hints when common casing mistakes occur.
-
-Quick example:
+### Deploy a Flow
 
 ```ts
 import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
