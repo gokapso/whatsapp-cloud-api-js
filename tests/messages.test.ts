@@ -281,24 +281,36 @@ describe("Messages resource", () => {
       bodyText: "Start flow",
       parameters: {
         flowId: "FLOW123",
+        flowCta: "Open",
         flowAction: "navigate",
         flowActionPayload: { screen: "welcome" }
       }
     });
 
     const parsedBody = JSON.parse(String(responses[0]?.init.body));
-    expect(parsedBody).toMatchObject({
-      type: "interactive",
-      interactive: {
-        type: "flow",
-        action: {
-          parameters: {
-            flow_id: "FLOW123",
-            flow_action: "navigate"
-          }
-        }
-      }
-    });
+    expect(parsedBody.type).toBe("interactive");
+    const params = parsedBody.interactive?.action?.parameters;
+    expect(params.flow_id).toBe("FLOW123");
+    expect(params.flow_cta).toBe("Open");
+    expect(params.flow_message_version).toBe("3");
+    expect(params.flow_action).toBe("navigate");
+  });
+
+  it("throws friendly error when flow CTA missing", async () => {
+    const { fetchMock } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await expect(
+      client.messages.sendInteractiveFlow({
+        phoneNumberId: "123",
+        to: "15551234567",
+        bodyText: "Start flow",
+        parameters: {
+          // flowCta missing on purpose
+          flowId: "FLOW123"
+        } as any
+      })
+    ).rejects.toThrow(/flowCta/);
   });
 
   it("sends an address interactive message", async () => {

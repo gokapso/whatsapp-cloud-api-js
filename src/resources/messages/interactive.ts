@@ -6,6 +6,18 @@ const MAX_FOOTER_CHARS = 60;
 const MAX_BUTTON_LABEL = 20;
 const MAX_SECTION_TITLE = 24;
 
+function parseInput<T>(schema: z.ZodSchema<T>, input: unknown, context: string): T {
+  const result = schema.safeParse(input);
+  if (result.success) return result.data;
+  const details = result.error.issues
+    .map((issue) => {
+      const path = issue.path.length ? issue.path.join(".") : "(root)";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
+  throw new Error(`${context} validation failed: ${details}`);
+}
+
 const textHeaderSchema = z.object({
   type: z.literal("text"),
   text: z.string().min(1).max(MAX_FOOTER_CHARS)
@@ -119,6 +131,7 @@ const callPermissionMessageSchema = baseMessageSchema.extend({
 
 const flowParametersSchema = z.object({
   flowId: z.string().min(1),
+  flowCta: z.string().min(1).max(MAX_BUTTON_LABEL),
   flowMessageVersion: z.string().min(1).optional(),
   flowToken: z.string().optional(),
   flowAction: z.enum(["navigate", "data_exchange"]).optional(),
@@ -167,7 +180,7 @@ export class InteractiveMessageSender {
   constructor(private readonly client: MessageSendClient) {}
 
   async sendButtons(input: ButtonMessageInput) {
-    const parsed = buttonMessageSchema.parse(input);
+    const parsed = parseInput(buttonMessageSchema, input, "Button interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, buttons } = parsed;
 
     const interactive = {
@@ -199,7 +212,7 @@ export class InteractiveMessageSender {
   }
 
   async sendList(input: ListMessageInput) {
-    const parsed = listMessageSchema.parse(input);
+    const parsed = parseInput(listMessageSchema, input, "List interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, buttonText, sections, header, footerText } = parsed;
 
     const interactive = {
@@ -236,7 +249,7 @@ export class InteractiveMessageSender {
   }
 
   async sendProduct(input: ProductMessageInput) {
-    const parsed = productMessageSchema.parse(input);
+    const parsed = parseInput(productMessageSchema, input, "Product interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, productRetailerId } = parsed;
 
     const interactive: Record<string, unknown> = {
@@ -268,7 +281,7 @@ export class InteractiveMessageSender {
   }
 
   async sendProductList(input: ProductListMessageInput) {
-    const parsed = productListMessageSchema.parse(input);
+    const parsed = parseInput(productListMessageSchema, input, "Product list interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, sections } = parsed;
 
     const interactive: Record<string, unknown> = {
@@ -303,7 +316,7 @@ export class InteractiveMessageSender {
   }
 
   async sendFlow(input: FlowMessageInput) {
-    const parsed = flowMessageSchema.parse(input);
+    const parsed = parseInput(flowMessageSchema, input, "Flow interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
@@ -312,6 +325,7 @@ export class InteractiveMessageSender {
       action: {
         name: "flow",
         parameters: {
+          flowCta: parameters.flowCta,
           flowId: parameters.flowId,
           flowMessageVersion: parameters.flowMessageVersion ?? "3",
           ...(parameters.flowToken ? { flowToken: parameters.flowToken } : {}),
@@ -339,7 +353,7 @@ export class InteractiveMessageSender {
   }
 
   async sendAddress(input: AddressInteractiveInput) {
-    const parsed = addressMessageSchema.parse(input);
+    const parsed = parseInput(addressMessageSchema, input, "Address interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
@@ -370,7 +384,7 @@ export class InteractiveMessageSender {
   }
 
   async sendLocationRequest(input: LocationRequestInteractiveInput) {
-    const parsed = locationRequestMessageSchema.parse(input);
+    const parsed = parseInput(locationRequestMessageSchema, input, "Location request interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
@@ -398,7 +412,7 @@ export class InteractiveMessageSender {
   }
 
   async sendCallPermissionRequest(input: CallPermissionInteractiveInput) {
-    const parsed = callPermissionMessageSchema.parse(input);
+    const parsed = parseInput(callPermissionMessageSchema, input, "Call permission interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
