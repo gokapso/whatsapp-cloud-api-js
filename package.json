@@ -50,11 +50,11 @@
   "types": "./dist/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kapso-ai/whatsapp-cloud-api-js.git"
+    "url": "https://github.com/gokapso/whatsapp-cloud-api-js.git"
   },
   "homepage": "https://docs.kapso.ai",
   "bugs": {
-    "url": "https://github.com/kapso-ai/whatsapp-cloud-api-js/issues"
+    "url": "https://github.com/gokapso/whatsapp-cloud-api-js/issues"
   },
   "engines": {
     "node": ">=20.19"
