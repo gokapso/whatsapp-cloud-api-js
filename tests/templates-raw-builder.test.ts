@@ -1,5 +1,44 @@
 import { describe, expect, it } from "vitest";
 import { buildTemplatePayload } from "../src/resources/templates/raw";
+import type {
+  TemplateComponent,
+  TemplateBodyComponent,
+  TemplateButtonComponent,
+  TemplateHeaderComponent,
+  TemplateSendPayload
+} from "../src/resources/templates/types";
+
+function expectHeader(component: TemplateComponent): TemplateHeaderComponent {
+  if (component.type !== "header") {
+    throw new Error(`Expected header component, received ${component.type}`);
+  }
+  return component;
+}
+
+function expectBody(component: TemplateComponent): TemplateBodyComponent {
+  if (component.type !== "body") {
+    throw new Error(`Expected body component, received ${component.type}`);
+  }
+  return component;
+}
+
+function expectButton(component: TemplateComponent): TemplateButtonComponent {
+  if (component.type !== "button") {
+    throw new Error(`Expected button component, received ${component.type}`);
+  }
+  return component;
+}
+
+function expectComponents(payload: TemplateSendPayload): TemplateComponent[] {
+  expect(payload.components).toBeDefined();
+  return payload.components ?? [];
+}
+
+function expectComponent(payload: TemplateSendPayload, index: number): TemplateComponent {
+  const components = expectComponents(payload);
+  expect(components.length).toBeGreaterThan(index);
+  return components[index];
+}
 
 describe("buildTemplatePayload", () => {
   it("throws when name is missing", () => {
@@ -99,7 +138,7 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0]).toEqual({
+    expect(expectComponent(payload, 0)).toEqual({
       type: "header",
       parameters: [{ type: "text", text: "Hello" }]
     });
@@ -121,7 +160,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components.map((c) => c.type)).toEqual(["header", "body", "button"]);
+    const components = expectComponents(payload);
+    expect(components.map((c) => c.type)).toEqual(["header", "body", "button"]);
   });
 
   it("does not mutate the input payload", () => {
@@ -137,7 +177,7 @@ describe("buildTemplatePayload", () => {
           parameters: [{ type: "payload", payload: "ACK" }]
         }
       ]
-    } as const;
+    };
     const snapshot = JSON.parse(JSON.stringify(input));
 
     buildTemplatePayload(input);
@@ -239,7 +279,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const body = expectBody(expectComponent(payload, 0));
+    expect(body.parameters[0]).toMatchObject({
       type: "text",
       parameter_name: "customer_name",
       text: "Pablo"
@@ -267,7 +308,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const body = expectBody(expectComponent(payload, 0));
+    expect(body.parameters[0]).toMatchObject({
       type: "currency",
       currency: {
         fallback_value: "$10.00",
@@ -298,7 +340,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const body = expectBody(expectComponent(payload, 0));
+    expect(body.parameters[0]).toMatchObject({
       type: "currency",
       currency: {
         fallbackValue: "$15.00",
@@ -325,7 +368,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const body = expectBody(expectComponent(payload, 0));
+    expect(body.parameters[0]).toMatchObject({
       type: "date_time",
       dateTime: { fallbackValue: "January 1" }
     });
@@ -348,7 +392,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const body = expectBody(expectComponent(payload, 0));
+    expect(body.parameters[0]).toMatchObject({
       type: "date_time",
       date_time: { fallback_value: "Feb 02" }
     });
@@ -376,7 +421,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    const [text, currency, dateTime] = payload.components[0].parameters ?? [];
+    const body = expectBody(expectComponent(payload, 0));
+    const [text, currency, dateTime] = body.parameters;
     expect(text).toMatchObject({ type: "text", text: "John" });
     expect(currency).toMatchObject({ type: "currency" });
     expect(dateTime).toMatchObject({ type: "date_time" });
@@ -419,7 +465,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const header = expectHeader(expectComponent(payload, 0));
+    expect(header.parameters[0]).toMatchObject({
       type: "location",
       location: { latitude: "10.2", longitude: -70.3, name: "HQ" }
     });
@@ -437,7 +484,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const header = expectHeader(expectComponent(payload, 0));
+    expect(header.parameters[0]).toMatchObject({
       type: "image",
       image: { id: "MEDIA123" }
     });
@@ -455,7 +503,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const header = expectHeader(expectComponent(payload, 0));
+    expect(header.parameters[0]).toMatchObject({
       type: "video",
       video: { link: "https://example.com/video.mp4" }
     });
@@ -473,7 +522,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({
+    const header = expectHeader(expectComponent(payload, 0));
+    expect(header.parameters[0]).toMatchObject({
       type: "document",
       document: { id: "DOC123" }
     });
@@ -574,7 +624,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0]).toMatchObject({
+    const firstComponent = expectComponent(payload, 0);
+    expect(firstComponent).toMatchObject({
       subType: "quick_reply",
       parameters: [{ type: "payload", payload: "STOP" }]
     });
@@ -598,8 +649,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0]).toMatchObject({ type: "header" });
-    expect(payload.components[1]).toMatchObject({ subType: "quick_reply" });
+    expect(expectComponent(payload, 0)).toMatchObject({ type: "header" });
+    expect(expectComponent(payload, 1)).toMatchObject({ subType: "quick_reply" });
   });
 
   it("accepts flow buttons with and without parameters", () => {
@@ -616,7 +667,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(withParams.components[0]).toMatchObject({
+    const withParamsComponents = expectComponents(withParams);
+    expect(withParamsComponents[0]).toMatchObject({
       subType: "flow",
       parameters: [{ type: "payload", payload: { step: "one" } }]
     });
@@ -633,7 +685,8 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(withoutParams.components[0]).not.toHaveProperty("parameters");
+    const withoutParamsComponents = expectComponents(withoutParams);
+    expect(withoutParamsComponents[0]).not.toHaveProperty("parameters");
   });
 
   it("accepts flow button with action parameter (pass-through)", () => {
@@ -658,7 +711,7 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0]).toMatchObject({
+    expect(expectComponent(payload, 0)).toMatchObject({
       type: "button",
       subType: "flow",
       parameters: [
@@ -923,7 +976,7 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0]).toMatchObject({
+    expect(expectComponent(payload, 0)).toMatchObject({
       type: "button",
       subType: "phone_number",
       index: 2
@@ -1005,7 +1058,7 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0]).toMatchObject({ type: "button", subType: "catalog", index: 0 });
+    expect(expectComponent(payload, 0)).toMatchObject({ type: "button", subType: "catalog", index: 0 });
   });
 
   it("throws when component type is missing", () => {
@@ -1043,6 +1096,7 @@ describe("buildTemplatePayload", () => {
       ]
     });
 
-    expect(payload.components[0].parameters?.[0]).toMatchObject({ custom: "value" });
+    const header = expectHeader(expectComponent(payload, 0));
+    expect(header.parameters[0]).toMatchObject({ custom: "value" });
   });
 });

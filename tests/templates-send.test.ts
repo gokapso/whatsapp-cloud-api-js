@@ -1,46 +1,56 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, expectTypeOf } from "vitest";
 import { buildTemplateSendPayload } from "../src/resources/templates/send";
+import type { TemplateMessageInput } from "../src/resources/messages/template";
+import type { TemplateSendInput } from "../src/resources/templates/send";
+import type { TemplateComponent } from "../src/resources/templates/types";
+
+const unsafe = (input: unknown): TemplateSendInput => input as TemplateSendInput;
+
+function expectComponents(payload: ReturnType<typeof buildTemplateSendPayload>): TemplateComponent[] {
+  expect(payload.components).toBeDefined();
+  return payload.components ?? [];
+}
 
 describe("Template send payload builder", () => {
   it("throws when name is missing", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         language: "en_US",
         body: [{ type: "text", text: "Hi" }]
-      } as any)
+      }))
     ).toThrowError(/name/i);
   });
 
   it("throws when language is missing", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         body: [{ type: "text", text: "Hi" }]
-      } as any)
+      }))
     ).toThrowError(/language/i);
   });
 
   it("rejects non-string language values", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         language: { code: "en_US" }
-      } as any)
+      }))
     ).toThrowError(/expected string/i);
   });
 
   it("throws when raw components are provided", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         language: "en_US",
         components: []
-      } as any)
+      }))
     ).toThrowError(/does not accept raw components/i);
   });
 
   it("builds text-based template with positional body parameters", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "order_confirm",
       language: "en_US",
       body: [
@@ -49,29 +59,26 @@ describe("Template send payload builder", () => {
       ]
     });
 
-    expect(tpl).toMatchObject({
-      name: "order_confirm",
-      language: { code: "en_US" },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: "John" },
-            { type: "text", text: "9128312831" }
-          ]
-        }
+    const components = expectComponents(template);
+    expect(template).toMatchObject({ name: "order_confirm", language: { code: "en_US" } });
+    expect(components[0]).toMatchObject({
+      type: "body",
+      parameters: [
+        { type: "text", text: "John" },
+        { type: "text", text: "9128312831" }
       ]
     });
   });
 
   it("builds header image parameter via link", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "promo_image",
       language: "en_US",
       header: { type: "image", image: { link: "https://example.com/img.jpg" } },
       body: [{ type: "text", text: "John" }]
     });
-    expect(tpl.components[0]).toMatchObject({
+    const components = expectComponents(template);
+    expect(components[0]).toMatchObject({
       type: "header",
       parameters: [
         { type: "image", image: { link: "https://example.com/img.jpg" } }
@@ -80,24 +87,26 @@ describe("Template send payload builder", () => {
   });
 
   it("builds header media by id", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "promo_image",
       language: "en_US",
       header: { type: "image", image: { id: "MEDIA123" } }
     });
 
-    expect(tpl.components[0]).toMatchObject({
+    const components = expectComponents(template);
+    expect(components[0]).toMatchObject({
       parameters: [{ type: "image", image: { id: "MEDIA123" } }]
     });
   });
 
   it("builds location header parameter", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "delivery_loc",
       language: "en_US",
       header: { type: "location", location: { latitude: 10.2, longitude: 20.3, name: "HQ", address: "123 Main" } }
     });
-    expect(tpl.components[0]).toMatchObject({
+    const components = expectComponents(template);
+    expect(components[0]).toMatchObject({
       type: "header",
       parameters: [
         { type: "location", location: { latitude: 10.2, longitude: 20.3 } }
@@ -107,16 +116,16 @@ describe("Template send payload builder", () => {
 
   it("rejects header media without id or link", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         language: "en_US",
-        header: { type: "video", video: {} as any }
-      })
+        header: { type: "video", video: {} }
+      }))
     ).toThrowError(/video requires id or link/i);
   });
 
   it("keeps component ordering header, body, buttons", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "tpl",
       language: "en_US",
       header: { type: "text", text: "Header" },
@@ -126,34 +135,36 @@ describe("Template send payload builder", () => {
       ]
     });
 
-    expect(tpl.components.map((c) => c.type)).toEqual(["header", "body", "button"]);
+    const components = expectComponents(template);
+    expect(components.map((c) => c.type)).toEqual(["header", "body", "button"]);
   });
 
   it("does not mutate provided input", () => {
-    const input = {
+    const input: TemplateSendInput = {
       name: "tpl",
       language: "en_US",
       body: [{ type: "text", text: "Hi" }],
       buttons: [
         { type: "button", subType: "quick_reply", index: 0, parameters: [{ type: "payload", payload: "ACK" }] }
       ]
-    } as const;
+    };
     const snapshot = JSON.parse(JSON.stringify(input));
 
-    buildTemplateSendPayload({ ...input, buttons: [...input.buttons] });
+    buildTemplateSendPayload({ ...input, buttons: [...(input.buttons ?? [])] });
 
     expect(input).toEqual(snapshot);
   });
 
   it("adds quick reply button parameters", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "with_buttons",
       language: "en_US",
       buttons: [
         { type: "button", subType: "quick_reply", index: 0, parameters: [{ type: "payload", payload: "STOP" }] }
       ]
     });
-    expect(tpl.components[0]).toMatchObject({
+    const components = expectComponents(template);
+    expect(components[0]).toMatchObject({
       type: "button",
       subType: "quick_reply",
       index: 0
@@ -161,14 +172,15 @@ describe("Template send payload builder", () => {
   });
 
   it("adds url button variable parameter", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "with_url_btn",
       language: "en_US",
       buttons: [
         { type: "button", subType: "url", index: 1, parameters: [{ type: "text", text: "promo2025" }] }
       ]
     });
-    expect(tpl.components[0]).toMatchObject({
+    const components = expectComponents(template);
+    expect(components[0]).toMatchObject({
       type: "button",
       subType: "url",
       index: 1
@@ -176,7 +188,7 @@ describe("Template send payload builder", () => {
   });
 
   it("adds phone number, flow (action), and copy code buttons", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "buttons",
       language: "en_US",
       buttons: [
@@ -191,10 +203,11 @@ describe("Template send payload builder", () => {
       ]
     });
 
-    expect(tpl.components).toHaveLength(3);
-    expect(tpl.components[0]).toMatchObject({ subType: "phone_number" });
-    expect(tpl.components[1]).toMatchObject({ subType: "copy_code" });
-    expect(tpl.components[2]).toMatchObject({
+    const components = expectComponents(template);
+    expect(components).toHaveLength(3);
+    expect(components[0]).toMatchObject({ subType: "phone_number" });
+    expect(components[1]).toMatchObject({ subType: "copy_code" });
+    expect(components[2]).toMatchObject({
       subType: "flow",
       parameters: [
         {
@@ -206,17 +219,18 @@ describe("Template send payload builder", () => {
   });
 
   it("allows flow buttons without parameters", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "flow_optional",
       language: "en_US",
       buttons: [{ type: "button", subType: "flow", index: 0 }]
     });
 
-    expect(tpl.components[0]).not.toHaveProperty("parameters");
+    const components = expectComponents(template);
+    expect(components[0]).not.toHaveProperty("parameters");
   });
 
   it("accepts body currency and date parameters", () => {
-    const tpl = buildTemplateSendPayload({
+    const template = buildTemplateSendPayload({
       name: "tpl",
       language: "en_US",
       body: [
@@ -231,7 +245,8 @@ describe("Template send payload builder", () => {
       ]
     });
 
-    expect(tpl.components[0].parameters).toHaveLength(2);
+    const components = expectComponents(template);
+    expect(components[0].parameters).toHaveLength(2);
   });
 
   it("throws when currency amount is not an integer", () => {
@@ -251,29 +266,29 @@ describe("Template send payload builder", () => {
 
   it("throws when body parameter type is unsupported", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         language: "en_US",
         body: [{ type: "foo", text: "nope" }]
-      } as any)
+      }))
     ).toThrowError(/No matching discriminator/);
   });
 
   it("throws when button definition is missing subtype or index", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         language: "en_US",
         buttons: [{ type: "button", index: 0 }]
-      } as any)
+      }))
     ).toThrowError(/subType/);
 
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         language: "en_US",
         buttons: [{ type: "button", subType: "url" }]
-      } as any)
+      }))
     ).toThrowError(/index/);
   });
 
@@ -296,7 +311,7 @@ describe("Template send payload builder", () => {
 
   it("throws when flow button parameters contain invalid type", () => {
     expect(() =>
-      buildTemplateSendPayload({
+      buildTemplateSendPayload(unsafe({
         name: "tpl",
         language: "en_US",
         buttons: [
@@ -307,7 +322,7 @@ describe("Template send payload builder", () => {
             parameters: [{ type: "text", text: "bad" }]
           }
         ]
-      })
+      }))
     ).toThrowError(/payload/);
   });
 
@@ -322,4 +337,5 @@ describe("Template send payload builder", () => {
       })
     ).toThrowError(/>=1 characters/);
   });
+
 });

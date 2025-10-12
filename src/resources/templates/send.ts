@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { TemplateSendPayload, TemplateButtonComponent, TemplateComponent } from "./types";
 
 // Header parameters for sending a template
 const headerParamSchema = z.discriminatedUnion("type", [
@@ -101,19 +102,24 @@ export const templateSendInputSchema = z.object({
 
 export type TemplateSendInput = z.infer<typeof templateSendInputSchema>;
 
+// Strongly-typed component shapes matching Meta wire schema (camelCase input; SDK snake-cases on send)
+type HeaderComponent = { type: "header"; parameters: [z.infer<typeof headerParamSchema>] };
+type BodyComponent = { type: "body"; parameters: Array<z.infer<typeof bodyParamSchema>> };
+type ButtonComponent = z.infer<typeof buttonParamSchema>; // { type: 'button', subType: ..., index, parameters? }
+
 /**
  * Build a Template message payload from typed parameters.
  * Validates placeholders and structure with Zod before returning the payload expected by Meta.
  * @category Templates
  */
-export function buildTemplateSendPayload(input: TemplateSendInput) {
+export function buildTemplateSendPayload(input: TemplateSendInput): TemplateSendPayload {
   if (Object.prototype.hasOwnProperty.call(input as Record<string, unknown>, "components")) {
     throw new Error("buildTemplateSendPayload does not accept raw components; use buildTemplatePayload for Meta-style payloads");
   }
 
   const parsed = templateSendInputSchema.parse(input);
 
-  const components: Array<Record<string, unknown>> = [];
+  const components: TemplateComponent[] = [];
   if (parsed.header) {
     components.push({ type: "header", parameters: [parsed.header] });
   }
@@ -122,7 +128,7 @@ export function buildTemplateSendPayload(input: TemplateSendInput) {
   }
   if (parsed.buttons && parsed.buttons.length > 0) {
     for (const btn of parsed.buttons) {
-      components.push(btn);
+      components.push(btn as TemplateButtonComponent);
     }
   }
 

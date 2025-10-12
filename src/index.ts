@@ -16,6 +16,14 @@ export type {
 } from "./resources/flows";
 export * as TemplateDefinition from "./resources/templates/definition";
 export { buildTemplateSendPayload, templateSendInputSchema } from "./resources/templates/send";
+export type { TemplateSendInput } from "./resources/templates/send";
+export type {
+  TemplateSendPayload,
+  TemplateComponent,
+  TemplateHeaderComponent,
+  TemplateBodyComponent,
+  TemplateButtonComponent
+} from "./resources/templates/types";
 export { GraphApiError, KapsoProxyRequiredError } from "./errors";
 export type { ErrorCategory, RetryHint, RetryAction } from "./errors";
 export * from "./types";

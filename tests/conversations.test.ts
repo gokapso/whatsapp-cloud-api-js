@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, expectTypeOf } from "vitest";
 import { WhatsAppClient } from "../src";
 
 describe("Conversations API", () => {
@@ -71,7 +71,7 @@ describe("Conversations API", () => {
 
     expect(calls[0]?.url).toContain("/v23.0/conversations/conv-1");
     expect(conversation).toMatchObject({ id: "conv-1", phoneNumber: "+15551234567", phoneNumberId: "123" });
-    expectTypeOf(conversation.status).toBeString();
+    expectTypeOf(conversation.status).toEqualTypeOf<string | undefined>();
   });
 
   it("retrieves a single conversation when response is bare object", async () => {

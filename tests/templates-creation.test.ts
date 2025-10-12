@@ -144,7 +144,12 @@ describe("Template definition validation", () => {
     expect(template.messageSendTtlSeconds).toBe(120);
     expect(template.components[0]).toMatchObject({ addSecurityRecommendation: true });
     expect(template.components[1]).toMatchObject({ codeExpirationMinutes: 5 });
-    expect(template.components[2].buttons[0]).toMatchObject({ type: "OTP", otpType: "COPY_CODE" });
+    const buttonsComponent = template.components[2];
+    expect(buttonsComponent.type).toBe("BUTTONS");
+    if (buttonsComponent.type !== "BUTTONS") {
+      throw new Error("Expected BUTTONS component");
+    }
+    expect(buttonsComponent.buttons[0]).toMatchObject({ type: "OTP", otpType: "COPY_CODE" });
   });
 
   it("accepts limited time offer component", () => {
@@ -167,7 +172,12 @@ describe("Template definition validation", () => {
       ]
     });
 
-    expect(template.components[1]).toMatchObject({ limitedTimeOffer: { text: "Ends soon!", hasExpiration: true } });
+    const limitedOffer = template.components[1];
+    expect(limitedOffer.type).toBe("LIMITED_TIME_OFFER");
+    if (limitedOffer.type !== "LIMITED_TIME_OFFER") {
+      throw new Error("Expected LIMITED_TIME_OFFER component");
+    }
+    expect(limitedOffer).toMatchObject({ limitedTimeOffer: { text: "Ends soon!", hasExpiration: true } });
   });
 
   it("supports catalog button type", () => {
@@ -186,7 +196,12 @@ describe("Template definition validation", () => {
       ]
     });
 
-    expect(template.components[1].buttons[0]).toMatchObject({ type: "CATALOG", text: "View catalog" });
+    const buttonsComponent = template.components[1];
+    expect(buttonsComponent.type).toBe("BUTTONS");
+    if (buttonsComponent.type !== "BUTTONS") {
+      throw new Error("Expected BUTTONS component");
+    }
+    expect(buttonsComponent.buttons[0]).toMatchObject({ type: "CATALOG", text: "View catalog" });
   });
 
   it("supports call permission request component", () => {
@@ -270,8 +285,12 @@ describe("Template definition validation", () => {
       ]
     });
 
-    expect(template.components[1]).toHaveProperty("cards");
-    expect(template.components[1].cards).toHaveLength(2);
+    const carousel = template.components[1];
+    expect(carousel.type).toBe("CAROUSEL");
+    if (carousel.type !== "CAROUSEL") {
+      throw new Error("Expected CAROUSEL component");
+    }
+    expect(carousel.cards).toHaveLength(2);
   });
 
   it("supports product carousel with spm buttons", () => {
@@ -313,7 +332,17 @@ describe("Template definition validation", () => {
       ]
     });
 
-    expect(template.components[1].cards[0].components[1].buttons[0]).toMatchObject({ type: "SPM", text: "View" });
+    const carousel = template.components[1];
+    expect(carousel.type).toBe("CAROUSEL");
+    if (carousel.type !== "CAROUSEL") {
+      throw new Error("Expected CAROUSEL component");
+    }
+    const firstCardButtons = carousel.cards[0].components[1];
+    expect(firstCardButtons.type).toBe("BUTTONS");
+    if (firstCardButtons.type !== "BUTTONS") {
+      throw new Error("Expected BUTTONS component in card");
+    }
+    expect(firstCardButtons.buttons[0]).toMatchObject({ type: "SPM", text: "View" });
   });
 
   it("supports multi-product button", () => {
@@ -330,7 +359,12 @@ describe("Template definition validation", () => {
       ]
     });
 
-    expect(template.components[1].buttons[0]).toMatchObject({ type: "MPM", text: "View items" });
+    const buttons = template.components[1];
+    expect(buttons.type).toBe("BUTTONS");
+    if (buttons.type !== "BUTTONS") {
+      throw new Error("Expected BUTTONS component");
+    }
+    expect(buttons.buttons[0]).toMatchObject({ type: "MPM", text: "View items" });
   });
 
   it("honors parameter format field", () => {
