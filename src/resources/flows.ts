@@ -125,7 +125,8 @@ export class FlowsResource {
     } else if (file instanceof Blob) {
       form.append("file", file, "flow.json");
     } else if (file instanceof ArrayBuffer || ArrayBuffer.isView(file)) {
-      const blob = new Blob([file as ArrayBuffer | ArrayBufferView], { type: "application/json" });
+      const buf = toStrictArrayBuffer(file);
+      const blob = new Blob([buf], { type: "application/json" });
       form.append("file", blob, "flow.json");
     } else {
       throw new Error("Unsupported file type for Flow asset upload");
@@ -273,6 +274,14 @@ export class FlowsResource {
   private buildCacheKey(wabaId: string, name: string): string {
     return `${wabaId}::${name}`;
   }
+}
+
+function toStrictArrayBuffer(input: ArrayBuffer | ArrayBufferView): ArrayBuffer {
+  if (input instanceof ArrayBuffer) return input;
+  const src = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  const copy = new Uint8Array(src.byteLength);
+  copy.set(src);
+  return copy.buffer;
 }
 
 function normalizeValidationErrors(input: unknown): FlowValidationError[] | undefined {

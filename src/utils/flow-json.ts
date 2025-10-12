@@ -279,8 +279,8 @@ export function computeFlowJsonHash(value: unknown): string {
   throw new Error("SHA-256 hashing is not available in this environment");
 }
 
-export function toWireKeyName(key: string): string {
-  return mapAuthoringKey(key);
+export function toWireKeyName(key: string, isComponent = false): string {
+  return mapAuthoringKey(key, isComponent);
 }
 
 export function fromWireKeyName(key: string): string {

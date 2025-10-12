@@ -112,7 +112,10 @@ export async function downloadAndDecrypt(options: DownloadMediaOptions): Promise
   }
   const cipherWithTag = Buffer.from(await response.arrayBuffer());
   const plaintext = decryptBuffer(cipherWithTag, normalizeMetadata(options.encryptionMetadata));
-  return plaintext.buffer.slice(plaintext.byteOffset, plaintext.byteOffset + plaintext.byteLength);
+  // Return a fresh ArrayBuffer (not SharedArrayBuffer) to satisfy DOM BlobPart typing in TS
+  const copy = new Uint8Array(plaintext.length);
+  copy.set(plaintext);
+  return copy.buffer;
 }
 
 function decryptFlowPayload(encrypted: string, metadata: Record<string, unknown>): Record<string, unknown> {

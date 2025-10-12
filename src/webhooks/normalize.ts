@@ -37,7 +37,7 @@ export interface NormalizedWebhookResult {
 }
 
 interface RawEntry {
-  changes?: Array<{ value?: unknown }>;
+  changes?: Array<{ value?: unknown; field?: unknown }>;
   [key: string]: unknown;
 }
 
