@@ -122,11 +122,15 @@ describe("Flows resource", () => {
     const form = call?.init.body as FormData;
     expect(form).toBeInstanceOf(FormData);
 
-    const entries = Array.from(form.entries());
-    const fileEntry = entries.find(([key]) => key === "file");
-    expect(fileEntry).toBeDefined();
-    const [, value] = fileEntry!;
-    const text = typeof value === "string" ? value : await (value as File).text();
+    let fileValue: FormDataEntryValue | undefined;
+    form.forEach((value, key) => {
+      if (key === "file" && fileValue === undefined) {
+        fileValue = value;
+      }
+    });
+
+    expect(fileValue).toBeDefined();
+    const text = typeof fileValue === "string" ? fileValue : await (fileValue as File).text();
     expect(JSON.parse(text)).toEqual(toFlowJsonWireCase(SAMPLE_FLOW));
   });
 

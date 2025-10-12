@@ -206,9 +206,10 @@ describe("MediaResource.download", () => {
 
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
     const res = await client.media.download({ mediaId: "MEDIA_ID", as: "response" });
-    expect(res).toBeInstanceOf(Response);
-    expect(res.ok).toBe(true);
-    const buf = new Uint8Array(await (res as Response).arrayBuffer());
+    const resp = res as Response;
+    expect(resp).toBeInstanceOf(Response);
+    expect(resp.ok).toBe(true);
+    const buf = new Uint8Array(await resp.arrayBuffer());
     expect([...buf]).toEqual([42, 42]);
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, expectTypeOf } from "vitest";
 import { WhatsAppClient } from "../src";
 
 describe("Calls API", () => {

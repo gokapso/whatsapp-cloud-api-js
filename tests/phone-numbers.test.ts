@@ -93,7 +93,7 @@ describe("Phone Numbers API", () => {
     expect(res).toMatchObject({ fallbackLanguage: "en_US", calling: { status: "ENABLED" } });
     expect(res.calling?.callHours?.weeklyOperatingHours?.[0]?.dayOfWeek).toBe("MONDAY");
     expectTypeOf(res).not.toBeAny();
-    expectTypeOf(res.calling?.callHours?.weeklyOperatingHours?.[0]?.openTime).toBeString();
+    expectTypeOf(res.calling?.callHours?.weeklyOperatingHours?.[0]?.openTime).toMatchTypeOf<string | undefined>();
   });
 
   it("settings.update posts calling configuration", async () => {
