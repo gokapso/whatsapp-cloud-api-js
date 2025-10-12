@@ -1,4 +1,21 @@
 import { z } from "zod";
+import type {
+  TemplateBodyComponent,
+  TemplateBodyParameter,
+  TemplateButtonCatalogComponent,
+  TemplateButtonComponent,
+  TemplateButtonCopyCodeComponent,
+  TemplateButtonFlowComponent,
+  TemplateButtonParameterFlow,
+  TemplateButtonParameterQuickReply,
+  TemplateButtonParameterText,
+  TemplateButtonPhoneComponent,
+  TemplateButtonQuickReplyComponent,
+  TemplateButtonUrlComponent,
+  TemplateHeaderComponent,
+  TemplateHeaderParameter,
+  TemplateSendPayload
+} from "./types";
 
 const rawComponentSchema = z.object({
   type: z.string().min(1),
@@ -22,7 +39,7 @@ const rawTemplatePayloadSchema = z
 
 export type RawTemplatePayloadInput = z.input<typeof rawTemplatePayloadSchema>;
 
-export function buildTemplatePayload(input: RawTemplatePayloadInput) {
+export function buildTemplatePayload(input: RawTemplatePayloadInput): TemplateSendPayload {
   let parsed: z.infer<typeof rawTemplatePayloadSchema>;
   try {
     parsed = rawTemplatePayloadSchema.parse(input);
@@ -35,7 +52,7 @@ export function buildTemplatePayload(input: RawTemplatePayloadInput) {
       );
       if (typeIssue) {
         const componentIndex = typeIssue.path[1];
-        throw new Error(`components[${componentIndex}].type is required`);
+        throw new Error(`components[${String(componentIndex)}].type is required`);
       }
     }
     throw error;
@@ -56,12 +73,12 @@ export function buildTemplatePayload(input: RawTemplatePayloadInput) {
         return {
           type: "header",
           parameters: [normalizeHeaderParameter(component.parameters, path)]
-        };
+        } satisfies TemplateHeaderComponent;
       case "body":
         return {
           type: "body",
           parameters: normalizeBodyParameters(component.parameters, path)
-        };
+        } satisfies TemplateBodyComponent;
       case "button":
         return normalizeButtonComponent(component, path);
       default:
@@ -97,7 +114,7 @@ function normalizeHeaderParameter(parameters: unknown, path: string) {
       throw new Error(`${paramPath}.text must be a non-empty string`);
     }
     (param as any).text = text;
-    return param;
+    return param as TemplateHeaderParameter;
   }
 
   if (type === "image" || type === "video" || type === "document") {
@@ -115,7 +132,7 @@ function normalizeHeaderParameter(parameters: unknown, path: string) {
       ensureValidUrl(link, `${paramPath}.${mediaKey}.link`);
     }
     (param as any)[mediaKey] = media;
-    return param;
+    return param as TemplateHeaderParameter;
   }
 
   if (type === "location") {
@@ -133,7 +150,7 @@ function normalizeHeaderParameter(parameters: unknown, path: string) {
       latitude,
       longitude
     };
-    return param;
+    return param as TemplateHeaderParameter;
   }
 
   throw new Error(`${paramPath}.type '${type}' is not supported in header component`);
@@ -160,7 +177,7 @@ function normalizeBodyParameters(parameters: unknown, path: string) {
         throw new Error(`${paramPath}.text must be a non-empty string`);
       }
       (cloned as any).text = text;
-      return cloned;
+      return cloned as TemplateBodyParameter;
     }
 
     if (type === "currency") {
@@ -177,7 +194,7 @@ function normalizeBodyParameters(parameters: unknown, path: string) {
         throw new Error(`${paramPath}.currency.amount_1000 must be an integer`);
       }
       (cloned as any).currency = currency;
-      return cloned;
+      return cloned as TemplateBodyParameter;
     }
 
     if (type === "date_time") {
@@ -189,11 +206,11 @@ function normalizeBodyParameters(parameters: unknown, path: string) {
       const fallbackValueKey = (dateTime as any).fallbackValue !== undefined ? "fallbackValue" : "fallback_value";
       ensureString((dateTime as any)[fallbackValueKey], `${paramPath}.date_time.fallback_value`);
       (cloned as any)[dateTimeKey] = dateTime;
-      return cloned;
+      return cloned as TemplateBodyParameter;
     }
 
     throw new Error(`${paramPath}.type '${type}' is not supported in body component`);
-  });
+  }) as TemplateBodyParameter[];
 }
 
 function normalizeButtonComponent(component: Record<string, unknown>, path: string) {
@@ -209,46 +226,97 @@ function normalizeButtonComponent(component: Record<string, unknown>, path: stri
   }
 
   const parameters = component.parameters;
-  let normalizedParameters: Array<Record<string, unknown>> | undefined;
 
   switch (subType) {
-    case "quick_reply":
-      normalizedParameters = normalizeQuickReplyParameters(parameters, path);
-      break;
-    case "url":
-      normalizedParameters = normalizeButtonTextParameters(parameters, path);
-      break;
-    case "phone_number":
-      normalizedParameters = normalizeButtonTextParameters(parameters, path, { optional: true });
-      break;
-    case "copy_code":
-      normalizedParameters = normalizeButtonTextParameters(parameters, path, { maxLength: 15 });
-      break;
-    case "flow":
-      normalizedParameters = normalizeFlowParameters(parameters, path);
-      break;
-    case "catalog":
-      // Pass-through for catalog subtype (no strict validation of parameters here)
+    case "quick_reply": {
+      const params = normalizeQuickReplyParameters(parameters, path);
+      const result: TemplateButtonQuickReplyComponent = {
+        type: "button",
+        subType: "quick_reply",
+        index: indexNumber,
+        parameters: params
+      };
+      return result;
+    }
+    case "url": {
+      const params = normalizeButtonTextParameters(parameters, path);
+      if (!params) {
+        throw new Error(`${path}.parameters must include at least one entry`);
+      }
+      const result: TemplateButtonUrlComponent = {
+        type: "button",
+        subType: "url",
+        index: indexNumber,
+        parameters: params
+      };
+      return result;
+    }
+    case "phone_number": {
+      const params = normalizeButtonTextParameters(parameters, path, { optional: true });
+      const result: TemplateButtonPhoneComponent = params
+        ? {
+            type: "button",
+            subType: "phone_number",
+            index: indexNumber,
+            parameters: params
+          }
+        : {
+            type: "button",
+            subType: "phone_number",
+            index: indexNumber
+          };
+      return result;
+    }
+    case "copy_code": {
+      const params = normalizeButtonTextParameters(parameters, path, { maxLength: 15 });
+      if (!params) {
+        throw new Error(`${path}.parameters must include at least one entry`);
+      }
+      const result: TemplateButtonCopyCodeComponent = {
+        type: "button",
+        subType: "copy_code",
+        index: indexNumber,
+        parameters: params
+      };
+      return result;
+    }
+    case "flow": {
+      const params = normalizeFlowParameters(parameters, path);
+      const result: TemplateButtonFlowComponent = params
+        ? {
+            type: "button",
+            subType: "flow",
+            index: indexNumber,
+            parameters: params
+          }
+        : {
+            type: "button",
+            subType: "flow",
+            index: indexNumber
+          };
+      return result;
+    }
+    case "catalog": {
       if (parameters !== undefined && !Array.isArray(parameters)) {
         throw new Error(`${path}.parameters must be an array`);
       }
-      normalizedParameters = parameters as Array<Record<string, unknown>> | undefined;
-      break;
+      const result: TemplateButtonCatalogComponent = parameters
+        ? {
+            type: "button",
+            subType: "catalog",
+            index: indexNumber,
+            parameters: parameters as Array<Record<string, unknown>>
+          }
+        : {
+            type: "button",
+            subType: "catalog",
+            index: indexNumber
+          };
+      return result;
+    }
     default:
       throw new Error(`${path}.sub_type '${subType}' is not supported`);
   }
-
-  const result: Record<string, unknown> = {
-    type: "button",
-    subType,
-    index: indexNumber
-  };
-
-  if (normalizedParameters !== undefined) {
-    result.parameters = normalizedParameters;
-  }
-
-  return result;
 }
 
 function ensureString(value: unknown, path: string) {
@@ -269,7 +337,7 @@ function ensureValidUrl(value: unknown, path: string) {
   }
 }
 
-function normalizeQuickReplyParameters(parameters: unknown, path: string) {
+function normalizeQuickReplyParameters(parameters: unknown, path: string): TemplateButtonParameterQuickReply[] {
   if (!Array.isArray(parameters) || parameters.length === 0) {
     throw new Error(`${path}.parameters must include at least one entry`);
   }
@@ -284,15 +352,15 @@ function normalizeQuickReplyParameters(parameters: unknown, path: string) {
       throw new Error(`${path}.parameters[${paramIndex}].type must be 'payload'`);
     }
     ensureString((cloned as any).payload, `${path}.parameters[${paramIndex}].payload`);
-    return cloned as Record<string, unknown>;
-  });
+    return cloned as TemplateButtonParameterQuickReply;
+  }) as TemplateButtonParameterQuickReply[];
 }
 
 function normalizeButtonTextParameters(
   parameters: unknown,
   path: string,
   options: { optional?: boolean; maxLength?: number } = {}
-): Array<Record<string, unknown>> | undefined {
+): TemplateButtonParameterText[] | undefined {
   if (!Array.isArray(parameters) || parameters.length === 0) {
     if (options.optional) {
       return undefined;
@@ -316,11 +384,11 @@ function normalizeButtonTextParameters(
     if (options.maxLength && text.length > options.maxLength) {
       throw new Error(`${path}.parameters[${index}].text must be <= ${options.maxLength} characters`);
     }
-    return cloned as Record<string, unknown>;
-  });
+    return cloned as TemplateButtonParameterText;
+  }) as TemplateButtonParameterText[];
 }
 
-function normalizeFlowParameters(parameters: unknown, path: string) {
+function normalizeFlowParameters(parameters: unknown, path: string): TemplateButtonParameterFlow[] | undefined {
   if (parameters === undefined) {
     return undefined;
   }
@@ -333,8 +401,8 @@ function normalizeFlowParameters(parameters: unknown, path: string) {
     if (cloned && typeof cloned === "object" && "type" in (cloned as any) && typeof (cloned as any).type === "string") {
       (cloned as any).type = ((cloned as any).type as string).toLowerCase();
     }
-    return cloned as Record<string, unknown>;
-  });
+    return cloned as TemplateButtonParameterFlow;
+  }) as TemplateButtonParameterFlow[];
 }
 
 function clone<T>(value: T): T {

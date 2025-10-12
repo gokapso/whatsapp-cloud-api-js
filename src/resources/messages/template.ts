@@ -1,17 +1,21 @@
 import { z } from "zod";
 import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import type { TemplateSendPayload } from "../templates/types";
 
 const templateComponentSchema = z.object({
   type: z.string().min(1)
 }).loose();
 
-const templateSchema = z.object({
-  name: z.string().min(1, "template name is required"),
-  language: z.object({
-    code: z.string().min(1, "language code is required")
-  }),
-  components: z.array(templateComponentSchema).optional()
-});
+const templateSchema = z
+  .object({
+    name: z.string().min(1, "template name is required"),
+    language: z.object({
+      code: z.string().min(1, "language code is required"),
+      policy: z.literal("deterministic").optional()
+    }),
+    components: z.array(templateComponentSchema).optional()
+  })
+  .transform((value) => value as TemplateSendPayload);
 
 const templateMessageSchema = baseMessageSchema.extend({
   template: templateSchema
