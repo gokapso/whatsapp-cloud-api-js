@@ -6,6 +6,7 @@ describe("Kapso field helpers", () => {
     expect(buildKapsoFields()).toBe(`kapso(${KAPSO_MESSAGE_FIELDS.join(",")})`);
     // Ensure media_url is part of the default set
     expect(KAPSO_MESSAGE_FIELDS).toContain("media_url");
+    expect(KAPSO_MESSAGE_FIELDS).toContain("content");
   });
 
   it("deduplicates and trims custom fields", () => {

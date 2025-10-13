@@ -9,6 +9,7 @@ export const KAPSO_MESSAGE_FIELDS = [
   "whatsapp_conversation_id",
   "contact_name",
   "message_type_data",
+  "content",
   "flow_response",
   "flow_token",
   "flow_name",

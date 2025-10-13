@@ -162,6 +162,7 @@ export interface KapsoMessageExtensions {
   whatsappConversationId?: string;
   contactName?: string;
   messageTypeData?: Record<string, unknown>;
+  content?: Record<string, unknown>;
   flowResponse?: Record<string, unknown>;
   flowToken?: string;
   flowName?: string;

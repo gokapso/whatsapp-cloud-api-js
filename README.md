@@ -395,6 +395,7 @@ All history endpoints return Meta-compatible records with Graph paging:
 - `page.data` (camelCased) mirrors Meta’s message/contact/conversation/call schema.
 - `page.paging` exposes `cursors.before` / `cursors.after` plus `next` / `previous` URLs when present.
 - Supply `fields: buildKapsoFields()` (or the string `"kapso(default)"`) to include all Kapso extensions, or pass your own subset such as `fields: "kapso(flow_response,flow_token)"`. Use `fields: "kapso()"` to omit Kapso extras entirely.
+- When you store messages via Kapso, request `kapso(content)` to hydrate the normalized message with the original payload fragment (for example, catalog interactive content).
 - Tip: `buildKapsoFields` is exported from the SDK, so you can `import { buildKapsoFields } from "@kapso/whatsapp-cloud-api";` and drop it straight into your queries.
 
 ## Templates
