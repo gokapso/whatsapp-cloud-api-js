@@ -19,7 +19,7 @@ import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
 const client = new WhatsAppClient({
   accessToken: process.env.WHATSAPP_TOKEN!,
   // or route via Kapso proxy:
-  // baseUrl: "https://app.kapso.ai/api/meta",
+  // baseUrl: "https://api.kapso.ai/meta/whatsapp",
   // kapsoApiKey: process.env.KAPSO_API_KEY,
 });
 
@@ -72,7 +72,7 @@ To use Kapso’s proxy, set the client base URL and API key:
 
 ```ts
 const client = new WhatsAppClient({
-  baseUrl: "https://app.kapso.ai/api/meta",
+  baseUrl: "https://api.kapso.ai/meta/whatsapp",
   kapsoApiKey: process.env.KAPSO_API_KEY!,
 });
 ```
@@ -350,11 +350,11 @@ const catalogTemplate = buildTemplateDefinition({
 
 ## Query history & contacts
 
-When you point the client to Kapso’s proxy (`baseUrl: "https://app.kapso.ai/api/meta"` plus `kapsoApiKey`), you can query stored data in addition to sending messages.
+When you point the client to Kapso’s proxy (`baseUrl: "https://api.kapso.ai/meta/whatsapp"` plus `kapsoApiKey`), you can query stored data in addition to sending messages.
 
 ```ts
 const client = new WhatsAppClient({
-  baseUrl: "https://app.kapso.ai/api/meta",
+  baseUrl: "https://api.kapso.ai/meta/whatsapp",
   kapsoApiKey: process.env.KAPSO_API_KEY!,
 });
 
