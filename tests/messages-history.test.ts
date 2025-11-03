@@ -37,7 +37,7 @@ describe("Message history API", () => {
       }
     });
 
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     const result = await client.messages.query({
       phoneNumberId: "123",
@@ -59,7 +59,7 @@ describe("Message history API", () => {
       data: [],
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     await client.messages.query({
       phoneNumberId: "123",
@@ -89,7 +89,7 @@ describe("Message history API", () => {
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     const page = await client.messages.listByConversation({
       phoneNumberId: "123",
@@ -189,7 +189,7 @@ describe("Message history API", () => {
       }
     });
 
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
     const result = await client.messages.query({ phoneNumberId: "123" });
 
     const orderMessage = result.data.find((item) => item.id === "msg-order");

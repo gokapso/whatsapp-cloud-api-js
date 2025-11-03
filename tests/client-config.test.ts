@@ -40,13 +40,13 @@ describe("WhatsAppClient config", () => {
     const { fetchMock, responses } = setupFetch();
     const client = new WhatsAppClient({
       kapsoApiKey: "kapso-key",
-      baseUrl: "https://app.kapso.ai/api/meta",
+      baseUrl: "https://api.kapso.ai/meta/whatsapp",
       fetch: fetchMock
     });
 
     await client.request("POST", "/123/messages", { body: { messagingProduct: "whatsapp" } });
 
-    expect(responses[0]?.url).toBe("https://app.kapso.ai/api/meta/v23.0/123/messages");
+    expect(responses[0]?.url).toBe("https://api.kapso.ai/meta/whatsapp/v23.0/123/messages");
     expect(responses[0]?.init.headers).toMatchObject({
       "X-API-Key": "kapso-key"
     });

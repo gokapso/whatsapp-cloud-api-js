@@ -32,7 +32,7 @@ describe("Contacts API", () => {
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     const result = await client.contacts.list({
       phoneNumberId: "123",
@@ -55,7 +55,7 @@ describe("Contacts API", () => {
       paging: { cursors: { before: null, after: null }, next: null, previous: null }
     });
 
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     const customerId = "123e4567-e89b-12d3-a456-426614174000";
 
@@ -79,7 +79,7 @@ describe("Contacts API", () => {
       }
     });
 
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     const contact = await client.contacts.get({ phoneNumberId: "123", waId: "56911112222" });
 
@@ -95,7 +95,7 @@ describe("Contacts API", () => {
       profile_name: "Bob"
     });
 
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     const contact = await client.contacts.get({ phoneNumberId: "123", waId: "56922223333" });
 
@@ -104,7 +104,7 @@ describe("Contacts API", () => {
 
   it("updates contact metadata", async () => {
     const { fetchMock, calls } = setupFetch({ success: true });
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     const response = await client.contacts.update({
       phoneNumberId: "123",
@@ -124,7 +124,7 @@ describe("Contacts API", () => {
 
   it("rejects updates when no fields provided", async () => {
     const { fetchMock } = setupFetch({ success: true });
-    const client = new WhatsAppClient({ baseUrl: "https://app.kapso.ai/api/meta", kapsoApiKey: "key", fetch: fetchMock });
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
 
     await expect(
       client.contacts.update({ phoneNumberId: "123", waId: "56911112222" })

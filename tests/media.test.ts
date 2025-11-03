@@ -67,7 +67,7 @@ describe("Media resource", () => {
     const { fetchMock } = setupFetch({ headers: { "Content-Type": "application/octet-stream" }, body: new ArrayBuffer(0) });
     const client = new WhatsAppClient({
       kapsoApiKey: "kapso",
-      baseUrl: "https://app.kapso.ai/api/meta",
+      baseUrl: "https://api.kapso.ai/meta/whatsapp",
       fetch: fetchMock
     });
 
@@ -94,24 +94,24 @@ describe("Media resource", () => {
       id: "MEDIA_ID"
     };
     const { fetchMock, calls } = setupFetch({ body: JSON.stringify(metadata) });
-    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://app.kapso.ai/api/meta", fetch: fetchMock });
+    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
 
     const response = await client.media.get({ mediaId: "MEDIA_ID", phoneNumberId: "123" });
 
     expect(response).toEqual(expected);
     expectTypeOf(response).toMatchTypeOf<MediaMetadataResponse>();
-    expect(calls[0]?.url).toBe("https://app.kapso.ai/api/meta/v23.0/MEDIA_ID?phone_number_id=123");
+    expect(calls[0]?.url).toBe("https://api.kapso.ai/meta/whatsapp/v23.0/MEDIA_ID?phone_number_id=123");
   });
 
   it("deletes media with Kapso phone_number_id query", async () => {
     const { fetchMock, calls } = setupFetch({ body: JSON.stringify({ success: true }) });
-    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://app.kapso.ai/api/meta", fetch: fetchMock });
+    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
 
     const result = await client.media.delete({ mediaId: "MEDIA_ID", phoneNumberId: "123" });
 
     expect(result).toEqual({ success: true });
     expectTypeOf(result).toEqualTypeOf<{ success: true }>();
     expect(calls[0]?.init.method).toBe("DELETE");
-    expect(calls[0]?.url).toBe("https://app.kapso.ai/api/meta/v23.0/MEDIA_ID?phone_number_id=123");
+    expect(calls[0]?.url).toBe("https://api.kapso.ai/meta/whatsapp/v23.0/MEDIA_ID?phone_number_id=123");
   });
 });

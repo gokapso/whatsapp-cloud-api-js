@@ -105,7 +105,7 @@ describe("MediaResource.download", () => {
       () => new Response(new Uint8Array([1, 2, 3, 4]), { status: 200, headers: { "Content-Type": "image/png" } })
     ]);
 
-    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://app.kapso.ai/api/meta", fetch: fetchMock });
+    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
     await client.media.download({ mediaId: "MEDIA3", phoneNumberId: "123", auth: "never" });
     const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
     expect(headers2["X-API-Key"]).toBeUndefined();
@@ -135,13 +135,13 @@ describe("MediaResource.download", () => {
 
     const client = new WhatsAppClient({
       kapsoApiKey: "kapso",
-      baseUrl: "https://app.kapso.ai/api/meta",
+      baseUrl: "https://api.kapso.ai/meta/whatsapp",
       fetch: fetchMock
     });
 
     const bytes = await client.media.download({ mediaId: "MEDIA_ID", phoneNumberId: "123" });
 
-    expect(calls[0]?.url).toBe("https://app.kapso.ai/api/meta/v23.0/MEDIA_ID?phone_number_id=123");
+    expect(calls[0]?.url).toBe("https://api.kapso.ai/meta/whatsapp/v23.0/MEDIA_ID?phone_number_id=123");
     expect(calls[1]?.url).toBe(cdnUrl);
     const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
     expect(headers2["X-API-Key"]).toBe("kapso");
@@ -218,7 +218,7 @@ describe("MediaResource.download", () => {
       // Should not reach a fetch for metadata because we will throw before
       () => new Response("should-not-be-called", { status: 500 })
     ]);
-    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://app.kapso.ai/api/meta", fetch: fetchMock });
+    const client = new WhatsAppClient({ kapsoApiKey: "kapso", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
     await expect(client.media.download({ mediaId: "MEDIA_ID" })).rejects.toThrowError(
       "phoneNumberId is required when using the Kapso proxy"
     );
