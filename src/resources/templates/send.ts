@@ -3,7 +3,7 @@ import type { TemplateSendPayload, TemplateButtonComponent, TemplateComponent } 
 
 // Header parameters for sending a template
 const headerParamSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("text"), text: z.string().min(1) }),
+  z.object({ type: z.literal("text"), text: z.string().min(1), parameter_name: z.string().min(1).optional() }),
   z.object({
     type: z.literal("image"),
     image: z.object({ id: z.string().min(1).optional(), link: z.string().url().optional() }).refine((v) => !!(v.id || v.link), {
@@ -35,12 +35,17 @@ const headerParamSchema = z.discriminatedUnion("type", [
 
 // Body parameters
 const bodyParamSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({ type: z.literal("text"), text: z.string(), parameter_name: z.string().min(1).optional() }),
   z.object({
     type: z.literal("currency"),
-    currency: z.object({ fallbackValue: z.string(), code: z.string().min(1), amount1000: z.number().int() })
+    currency: z.object({ fallbackValue: z.string(), code: z.string().min(1), amount1000: z.number().int() }),
+    parameter_name: z.string().min(1).optional()
   }),
-  z.object({ type: z.literal("date_time"), dateTime: z.object({ fallbackValue: z.string() }) })
+  z.object({
+    type: z.literal("date_time"),
+    dateTime: z.object({ fallbackValue: z.string() }),
+    parameter_name: z.string().min(1).optional()
+  })
 ]);
 
 // Button parameters
@@ -48,28 +53,38 @@ const buttonQuickReplySchema = z.object({
   type: z.literal("button"),
   subType: z.literal("quick_reply"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
-  parameters: z.array(z.object({ type: z.literal("payload"), payload: z.string().min(1) })).min(1)
+  parameters: z
+    .array(z.object({ type: z.literal("payload"), payload: z.string().min(1), parameter_name: z.string().min(1).optional() }))
+    .min(1)
 });
 
 const buttonUrlSchema = z.object({
   type: z.literal("button"),
   subType: z.literal("url"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
-  parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1) })).min(1)
+  parameters: z
+    .array(z.object({ type: z.literal("text"), text: z.string().min(1), parameter_name: z.string().min(1).optional() }))
+    .min(1)
 });
 
 const buttonPhoneSchema = z.object({
   type: z.literal("button"),
   subType: z.literal("phone_number"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
-  parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1) })).optional()
+  parameters: z
+    .array(z.object({ type: z.literal("text"), text: z.string().min(1), parameter_name: z.string().min(1).optional() }))
+    .optional()
 });
 
 const buttonCopyCodeSchema = z.object({
   type: z.literal("button"),
   subType: z.literal("copy_code"),
   index: z.union([z.number().int().min(0).max(9), z.string()]),
-  parameters: z.array(z.object({ type: z.literal("text"), text: z.string().min(1).max(15) })).min(1)
+  parameters: z
+    .array(
+      z.object({ type: z.literal("text"), text: z.string().min(1).max(15), parameter_name: z.string().min(1).optional() })
+    )
+    .min(1)
 });
 
 const buttonFlowSchema = z.object({

@@ -3,8 +3,10 @@ export interface TemplateLanguage {
   policy?: "deterministic";
 }
 
+type NamedTemplateParameter = { parameter_name?: string };
+
 export type TemplateHeaderParameter =
-  | ({ type: "text"; text: string } & Record<string, unknown>)
+  | ({ type: "text"; text: string } & NamedTemplateParameter & Record<string, unknown>)
   | ({ type: "image"; image: { id?: string; link?: string } } & Record<string, unknown>)
   | ({ type: "video"; video: { id?: string; link?: string } } & Record<string, unknown>)
   | ({ type: "document"; document: { id?: string; link?: string } } & Record<string, unknown>)
@@ -19,7 +21,7 @@ export type TemplateHeaderParameter =
     } & Record<string, unknown>);
 
 export type TemplateBodyParameter =
-  | ({ type: "text"; text: string } & Record<string, unknown>)
+  | ({ type: "text"; text: string } & NamedTemplateParameter & Record<string, unknown>)
   | ({
       type: "currency";
       currency: {
@@ -29,12 +31,12 @@ export type TemplateBodyParameter =
         amount1000?: number;
         amount_1000?: number;
       };
-    } & Record<string, unknown>)
+    } & NamedTemplateParameter & Record<string, unknown>)
   | ({
       type: "date_time";
       dateTime?: { fallbackValue?: string };
       date_time?: { fallback_value?: string };
-    } & Record<string, unknown>);
+    } & NamedTemplateParameter & Record<string, unknown>);
 
 export interface TemplateHeaderComponent {
   type: "header";
@@ -46,8 +48,8 @@ export interface TemplateBodyComponent {
   parameters: TemplateBodyParameter[];
 }
 
-export type TemplateButtonParameterQuickReply = { type: "payload"; payload: string };
-export type TemplateButtonParameterText = { type: "text"; text: string };
+export type TemplateButtonParameterQuickReply = { type: "payload"; payload: string } & NamedTemplateParameter;
+export type TemplateButtonParameterText = { type: "text"; text: string } & NamedTemplateParameter;
 export type TemplateButtonParameterFlow = {
   type: "action";
   action: { flow_token?: string; flow_action_data?: Record<string, unknown> };
