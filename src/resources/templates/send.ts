@@ -82,9 +82,9 @@ const buttonCopyCodeSchema = z.object({
   index: z.union([z.number().int().min(0).max(9), z.string()]),
   parameters: z
     .array(
-      z.object({ type: z.literal("text"), text: z.string().min(1).max(15), parameter_name: z.string().min(1).optional() })
+      z.object({ type: z.literal("coupon_code"), coupon_code: z.string().min(1).max(15) })
     )
-    .min(1)
+    .length(1)
 });
 
 const buttonFlowSchema = z.object({

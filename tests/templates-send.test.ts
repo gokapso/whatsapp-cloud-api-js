@@ -193,7 +193,12 @@ describe("Template send payload builder", () => {
       language: "en_US",
       buttons: [
         { type: "button", subType: "phone_number", index: 0 },
-        { type: "button", subType: "copy_code", index: 1, parameters: [{ type: "text", text: "12345" }] },
+        {
+          type: "button",
+          subType: "copy_code",
+          index: 1,
+          parameters: [{ type: "coupon_code", coupon_code: "12345" }]
+        },
         {
           type: "button",
           subType: "flow",
@@ -207,6 +212,14 @@ describe("Template send payload builder", () => {
     expect(components).toHaveLength(3);
     expect(components[0]).toMatchObject({ subType: "phone_number" });
     expect(components[1]).toMatchObject({ subType: "copy_code" });
+    expect(components[1]).toMatchObject({
+      parameters: [
+        {
+          type: "coupon_code",
+          coupon_code: "12345"
+        }
+      ]
+    });
     expect(components[2]).toMatchObject({
       subType: "flow",
       parameters: [
@@ -302,11 +315,11 @@ describe("Template send payload builder", () => {
             type: "button",
             subType: "copy_code",
             index: 0,
-            parameters: [{ type: "text", text: "CODE_TOO_LONG_FOR_META" }]
+            parameters: [{ type: "coupon_code", coupon_code: "CODE_TOO_LONG_FOR_META" }]
           }
         ]
       })
-    ).toThrowError(/<=15 characters/);
+    ).toThrowError(/<=15 characters/i);
   });
 
   it("throws when flow button parameters contain invalid type", () => {

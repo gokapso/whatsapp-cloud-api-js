@@ -993,11 +993,38 @@ describe("buildTemplatePayload", () => {
             type: "button",
             subType: "copy_code",
             index: 0,
-            parameters: [{ type: "text", text: "THIS_IS_TOO_LONG_FOR_COPY_CODE" }]
+            parameters: [{ type: "coupon_code", coupon_code: "THIS_IS_TOO_LONG_FOR_COPY_CODE" }]
           }
         ]
       })
-    ).toThrowError(/parameters\[0\]\.text must be <= 15/i);
+    ).toThrowError(/parameters\[0\]\.coupon_code must be <= 15/i);
+  });
+
+  it("normalizes copy code button parameters", () => {
+    const payload = buildTemplatePayload({
+      name: "tpl",
+      language: "en_US",
+      components: [
+        {
+          type: "button",
+          sub_type: "COPY_CODE",
+          index: "0",
+          parameters: [{ type: "COUPON_CODE", coupon_code: "SAVE15" }]
+        }
+      ]
+    });
+
+    expect(expectComponent(payload, 0)).toMatchObject({
+      type: "button",
+      subType: "copy_code",
+      index: 0,
+      parameters: [
+        {
+          type: "coupon_code",
+          coupon_code: "SAVE15"
+        }
+      ]
+    });
   });
 
   it("throws when quick reply button has mixed parameter types", () => {

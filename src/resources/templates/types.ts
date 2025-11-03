@@ -54,6 +54,7 @@ export type TemplateButtonParameterFlow = {
   type: "action";
   action: { flow_token?: string; flow_action_data?: Record<string, unknown> };
 };
+export type TemplateButtonParameterCouponCode = { type: "coupon_code"; coupon_code: string };
 
 export interface TemplateButtonQuickReplyComponent {
   type: "button";
@@ -80,7 +81,7 @@ export interface TemplateButtonCopyCodeComponent {
   type: "button";
   subType: "copy_code";
   index: number | string;
-  parameters: TemplateButtonParameterText[];
+  parameters: TemplateButtonParameterCouponCode[];
 }
 
 export interface TemplateButtonFlowComponent {

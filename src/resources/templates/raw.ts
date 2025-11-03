@@ -8,6 +8,7 @@ import type {
   TemplateButtonFlowComponent,
   TemplateButtonParameterFlow,
   TemplateButtonParameterQuickReply,
+  TemplateButtonParameterCouponCode,
   TemplateButtonParameterText,
   TemplateButtonPhoneComponent,
   TemplateButtonQuickReplyComponent,
@@ -268,10 +269,7 @@ function normalizeButtonComponent(component: Record<string, unknown>, path: stri
       return result;
     }
     case "copy_code": {
-      const params = normalizeButtonTextParameters(parameters, path, { maxLength: 15 });
-      if (!params) {
-        throw new Error(`${path}.parameters must include at least one entry`);
-      }
+      const params = normalizeButtonCopyCodeParameters(parameters, path);
       const result: TemplateButtonCopyCodeComponent = {
         type: "button",
         subType: "copy_code",
@@ -386,6 +384,38 @@ function normalizeButtonTextParameters(
     }
     return cloned as TemplateButtonParameterText;
   }) as TemplateButtonParameterText[];
+}
+
+function normalizeButtonCopyCodeParameters(parameters: unknown, path: string): TemplateButtonParameterCouponCode[] {
+  if (!Array.isArray(parameters) || parameters.length === 0) {
+    throw new Error(`${path}.parameters must include exactly one entry`);
+  }
+
+  if (parameters.length !== 1) {
+    throw new Error(`${path}.parameters must include exactly one entry`);
+  }
+
+  return parameters.map((param, index) => {
+    const cloned = clone(param);
+    if (!cloned || typeof cloned !== "object" || typeof (cloned as any).type !== "string") {
+      throw new Error(`${path}.parameters[${index}].type is required`);
+    }
+    (cloned as any).type = ((cloned as any).type as string).toLowerCase();
+    if ((cloned as any).type !== "coupon_code") {
+      throw new Error(`${path}.parameters[${index}].type must be 'coupon_code'`);
+    }
+    const code = ensureString((cloned as any).coupon_code, `${path}.parameters[${index}].coupon_code`);
+    if (!code.trim()) {
+      throw new Error(`${path}.parameters[${index}].coupon_code must be a non-empty string`);
+    }
+    if (code.length > 15) {
+      throw new Error(`${path}.parameters[${index}].coupon_code must be <= 15 characters`);
+    }
+    return {
+      type: "coupon_code",
+      coupon_code: code
+    } satisfies TemplateButtonParameterCouponCode;
+  }) as TemplateButtonParameterCouponCode[];
 }
 
 function normalizeFlowParameters(parameters: unknown, path: string): TemplateButtonParameterFlow[] | undefined {
