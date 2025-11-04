@@ -25,7 +25,11 @@ const videoSchema = withMediaRefine(mediaRefBaseSchema.extend({
   caption: z.string().max(1024).optional()
 }));
 
-const audioSchema = mediaRefSchema;
+const audioSchema = withMediaRefine(
+  mediaRefBaseSchema.extend({
+    voice: z.boolean().optional()
+  })
+);
 const stickerSchema = mediaRefSchema;
 
 const documentMessageSchema = baseMessageSchema.extend({

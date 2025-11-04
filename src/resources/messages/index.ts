@@ -26,7 +26,9 @@ import {
   AddressInteractiveInput,
   LocationRequestInteractiveInput,
   CallPermissionInteractiveInput,
-  RawInteractiveInput
+  RawInteractiveInput,
+  CtaUrlInteractiveInput,
+  CatalogMessageInput
 } from "./interactive";
 
 const queryHistorySchema = z
@@ -155,6 +157,14 @@ export class MessagesResource {
 
   async sendInteractiveCallPermission(input: CallPermissionInteractiveInput): Promise<SendMessageResponse> {
     return this.interactiveSender.sendCallPermissionRequest(input);
+  }
+
+  async sendInteractiveCtaUrl(input: CtaUrlInteractiveInput): Promise<SendMessageResponse> {
+    return this.interactiveSender.sendCtaUrl(input);
+  }
+
+  async sendInteractiveCatalogMessage(input: CatalogMessageInput): Promise<SendMessageResponse> {
+    return this.interactiveSender.sendCatalogMessage(input);
   }
 
   async sendInteractiveRaw(input: RawInteractiveInput): Promise<SendMessageResponse> {

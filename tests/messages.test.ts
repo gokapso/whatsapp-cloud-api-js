@@ -190,6 +190,67 @@ describe("Messages resource", () => {
     });
   });
 
+  it("sends interactive reply buttons with image header", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveButtons({
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Pick an option",
+      buttons: [
+        { id: "accept", title: "Accept" }
+      ],
+      header: { type: "image", image: { id: "IMG1" } }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody.interactive?.header).toMatchObject({ type: "image", image: { id: "IMG1" } });
+  });
+
+  it("sends a CTA URL interactive with media header", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveCtaUrl({
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Tap the button",
+      header: { type: "image", image: { link: "https://example.com/img.png" } },
+      parameters: { displayText: "Open", url: "https://example.com" }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      type: "interactive",
+      interactive: {
+        type: "cta_url",
+        action: { name: "cta_url", parameters: { display_text: "Open", url: "https://example.com" } }
+      }
+    });
+  });
+
+  it("sends a catalog interactive message", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveCatalogMessage({
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Browse catalog",
+      parameters: { thumbnailProductRetailerId: "SKU-THUMB" }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      type: "interactive",
+      interactive: {
+        type: "catalog_message",
+        action: { name: "catalog_message", parameters: { thumbnail_product_retailer_id: "SKU-THUMB" } }
+      }
+    });
+  });
+
   it("sends an interactive list message", async () => {
     const { fetchMock, responses } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
@@ -253,6 +314,7 @@ describe("Messages resource", () => {
       to: "15551234567",
       catalogId: "CAT123",
       bodyText: "Catalog",
+      header: { type: "text", text: "Our catalog" },
       sections: [
         {
           title: "Featured",
@@ -360,7 +422,7 @@ describe("Messages resource", () => {
       interactive: {
         type: "location_request_message",
         action: {
-          name: "location_request_message"
+          name: "send_location"
         }
       }
     });

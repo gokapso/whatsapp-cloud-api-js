@@ -197,10 +197,31 @@ await client.messages.markRead({
 await client.messages.sendInteractiveButtons({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
-  header: { type: "text", text: "Header" },
+  header: { type: "image", image: { id: "<MEDIA_ID>" } },
   bodyText: "Pick an option",
   footerText: "Footer",
   buttons: [ { id: "accept", title: "Accept" }, { id: "decline", title: "Decline" } ],
+});
+```
+
+### Interactive CTA URL
+```ts
+await client.messages.sendInteractiveCtaUrl({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  header: { type: "image", image: { link: "https://example.com/banner.png" } },
+  bodyText: "Tap the button to see dates.",
+  parameters: { displayText: "See Dates", url: "https://example.com?utm=wa" }
+});
+```
+
+### Catalog Message
+```ts
+await client.messages.sendInteractiveCatalogMessage({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  bodyText: "Browse our catalog on WhatsApp",
+  parameters: { thumbnailProductRetailerId: "SKU-123" }
 });
 ```
 

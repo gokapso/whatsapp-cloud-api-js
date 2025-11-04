@@ -5,7 +5,7 @@ import type { SendMessageResponse } from "../../types";
 export const baseMessageSchema = z.object({
   phoneNumberId: z.string().min(1, "phoneNumberId is required"),
   to: z.string().min(1, "to is required"),
-  recipientType: z.enum(["individual"]).optional(),
+  recipientType: z.enum(["individual", "group"]).optional(),
   contextMessageId: z.string().min(1).optional(),
   bizOpaqueCallbackData: z.string().max(512).optional()
 });

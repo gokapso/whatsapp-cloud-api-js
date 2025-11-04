@@ -23,6 +23,18 @@ const textHeaderSchema = z.object({
   text: z.string().min(1).max(MAX_FOOTER_CHARS)
 });
 
+// Media ref used in headers (id or link is required)
+const headerMediaRef = z
+  .object({ id: z.string().min(1).optional(), link: z.string().url().optional() })
+  .refine((v) => Boolean(v.id || v.link), { message: "Either id or link must be provided" });
+
+const imageHeaderSchema = z.object({ type: z.literal("image"), image: headerMediaRef });
+const videoHeaderSchema = z.object({ type: z.literal("video"), video: headerMediaRef });
+const documentHeaderSchema = z.object({ type: z.literal("document"), document: headerMediaRef });
+
+// Union of all header types used by CTA URL and buttons (lists keep text-only)
+const anyHeaderSchema = z.union([textHeaderSchema, imageHeaderSchema, videoHeaderSchema, documentHeaderSchema]);
+
 const buttonOptionSchema = z.object({
   id: z.string().min(1).max(256),
   title: z.string().min(1).max(MAX_BUTTON_LABEL)
@@ -31,7 +43,7 @@ const buttonOptionSchema = z.object({
 const buttonMessageSchema = baseMessageSchema.extend({
   bodyText: z.string().min(1).max(MAX_BODY_CHARS),
   footerText: z.string().max(MAX_FOOTER_CHARS).optional(),
-  header: textHeaderSchema.optional(),
+  header: anyHeaderSchema.optional(),
   buttons: z.array(buttonOptionSchema).min(1).max(3)
 });
 
@@ -47,7 +59,8 @@ const listSectionSchema = z.object({
 });
 
 const listMessageSchema = baseMessageSchema.extend({
-  bodyText: z.string().min(1).max(MAX_BODY_CHARS),
+  // Meta docs allow up to 4096 characters for list body
+  bodyText: z.string().min(1).max(4096),
   buttonText: z.string().min(1).max(MAX_BUTTON_LABEL),
   sections: z.array(listSectionSchema).min(1).max(10),
   header: textHeaderSchema.optional(),
@@ -124,7 +137,8 @@ const callPermissionParametersSchema = z.object({
 });
 
 const callPermissionMessageSchema = baseMessageSchema.extend({
-  bodyText: z.string().min(1).max(MAX_BODY_CHARS),
+  // Body is optional but recommended
+  bodyText: z.string().max(MAX_BODY_CHARS).optional(),
   footerText: z.string().max(MAX_FOOTER_CHARS).optional(),
   parameters: callPermissionParametersSchema
 });
@@ -162,13 +176,13 @@ export type CallPermissionInteractiveInput = z.infer<typeof callPermissionMessag
 export interface RawInteractiveInput {
   phoneNumberId: string;
   to: string;
-  recipientType?: "individual";
+  recipientType?: "individual" | "group";
   contextMessageId?: string;
   bizOpaqueCallbackData?: string;
   interactive: Record<string, unknown>;
 }
 
-function buildHeader(header?: z.infer<typeof textHeaderSchema>) {
+function buildHeader(header?: Record<string, unknown>) {
   return header ? { ...header } : undefined;
 }
 
@@ -176,8 +190,43 @@ function buildFooter(text?: string) {
   return text ? { text } : undefined;
 }
 
+// CTA URL schemas
+const ctaUrlParametersSchema = z.object({
+  displayText: z.string().min(1).max(MAX_BUTTON_LABEL),
+  url: z.string().url()
+});
+
+const ctaUrlMessageSchema = baseMessageSchema.extend({
+  bodyText: z.string().min(1).max(MAX_BODY_CHARS),
+  header: anyHeaderSchema.optional(),
+  footerText: z.string().max(MAX_FOOTER_CHARS).optional(),
+  parameters: ctaUrlParametersSchema
+});
+
+// Catalog message schema
+const catalogMessageSchema = baseMessageSchema.extend({
+  bodyText: z.string().min(1).max(MAX_BODY_CHARS).optional(),
+  parameters: z
+    .object({ thumbnailProductRetailerId: z.string().min(1).optional() })
+    .default({})
+});
+
+export type CtaUrlInteractiveInput = z.infer<typeof ctaUrlMessageSchema>;
+export type CatalogMessageInput = z.infer<typeof catalogMessageSchema>;
+
 export class InteractiveMessageSender {
   constructor(private readonly client: MessageSendClient) {}
+
+  // Enforce global row cap for list interactive messages
+  // (Meta limit: 10 rows total across all sections)
+  private assertTotalListRows(sections: Array<{ rows: Array<unknown> }>) {
+    const total = sections.reduce((sum, s) => sum + (Array.isArray(s.rows) ? s.rows.length : 0), 0);
+    if (total > 10) {
+      throw new Error(
+        `List interactive message validation failed: total rows across all sections must be ≤ 10 (got ${total}).`
+      );
+    }
+  }
 
   async sendButtons(input: ButtonMessageInput) {
     const parsed = parseInput(buttonMessageSchema, input, "Button interactive message");
@@ -231,6 +280,9 @@ export class InteractiveMessageSender {
       }
     };
 
+    // Enforce total rows ≤ 10 across sections
+    this.assertTotalListRows(interactive.action.sections as Array<{ rows: Array<unknown> }>);
+
     const builtHeader = buildHeader(header);
     if (builtHeader) {
       Object.assign(interactive, { header: builtHeader });
@@ -251,6 +303,11 @@ export class InteractiveMessageSender {
   async sendProduct(input: ProductMessageInput) {
     const parsed = parseInput(productMessageSchema, input, "Product interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, productRetailerId } = parsed;
+
+    // Per Meta: product messages cannot include a header
+    if (header) {
+      throw new Error("Product interactive message cannot include a header.");
+    }
 
     const interactive: Record<string, unknown> = {
       type: "product",
@@ -283,6 +340,19 @@ export class InteractiveMessageSender {
   async sendProductList(input: ProductListMessageInput) {
     const parsed = parseInput(productListMessageSchema, input, "Product list interactive message");
     const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, sections } = parsed;
+
+    // Per Meta: product_list requires a text header
+    if (!header) {
+      throw new Error("Product list interactive message requires a text header.");
+    }
+
+    // Enforce global product cap ≤ 30 across all sections
+    const totalProducts = sections.reduce((sum, section) => sum + section.productItems.length, 0);
+    if (totalProducts > 30) {
+      throw new Error(
+        `Product list interactive message validation failed: total products across sections must be ≤ 30 (got ${totalProducts}).`
+      );
+    }
 
     const interactive: Record<string, unknown> = {
       type: "product_list",
@@ -391,7 +461,7 @@ export class InteractiveMessageSender {
       type: "location_request_message",
       body: { text: bodyText },
       action: {
-        name: "location_request_message",
+        name: "send_location",
         parameters: {
           requestMessage: parameters.requestMessage
         }
@@ -417,7 +487,6 @@ export class InteractiveMessageSender {
 
     const interactive: Record<string, unknown> = {
       type: "call_permission_request",
-      body: { text: bodyText },
       action: {
         name: "call_permission_request",
         parameters: {
@@ -426,6 +495,10 @@ export class InteractiveMessageSender {
         }
       }
     };
+
+    if (bodyText) {
+      (interactive as any).body = { text: bodyText };
+    }
 
     const footer = buildFooter(footerText);
     if (footer) {
@@ -446,6 +519,69 @@ export class InteractiveMessageSender {
       { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
+    return this.client.sendMessageRequest(phoneNumberId, payload);
+  }
+
+  // CTA URL: header may be text or media; body required; footer optional
+  async sendCtaUrl(input: z.infer<typeof ctaUrlMessageSchema>) {
+    const parsed = parseInput(ctaUrlMessageSchema, input, "CTA URL interactive message");
+    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, parameters } = parsed;
+
+    const interactive: Record<string, unknown> = {
+      type: "cta_url",
+      body: { text: bodyText },
+      action: {
+        name: "cta_url",
+        parameters: {
+          displayText: parameters.displayText,
+          url: parameters.url
+        }
+      }
+    };
+
+    const builtHeader = buildHeader(header as unknown as Record<string, unknown>);
+    if (builtHeader) {
+      Object.assign(interactive, { header: builtHeader });
+    }
+    const footer = buildFooter(footerText);
+    if (footer) {
+      Object.assign(interactive, { footer });
+    }
+
+    const payload = buildBasePayload(
+      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { type: "interactive", interactive }
+    );
+
+    return this.client.sendMessageRequest(phoneNumberId, payload);
+  }
+
+  // Catalog message: optional body text; action.name = catalog_message
+  async sendCatalogMessage(input: z.infer<typeof catalogMessageSchema>) {
+    const parsed = parseInput(catalogMessageSchema, input, "Catalog interactive message");
+    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, parameters } = parsed;
+
+    const interactive: Record<string, unknown> = {
+      type: "catalog_message",
+      action: {
+        name: "catalog_message",
+        parameters: {
+          ...(parameters.thumbnailProductRetailerId
+            ? { thumbnailProductRetailerId: parameters.thumbnailProductRetailerId }
+            : {})
+        }
+      }
+    };
+
+    if (bodyText) {
+      (interactive as any).body = { text: bodyText };
+    }
+
+    const payload = buildBasePayload(
+      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { type: "interactive", interactive }
+    );
+
     return this.client.sendMessageRequest(phoneNumberId, payload);
   }
 }
