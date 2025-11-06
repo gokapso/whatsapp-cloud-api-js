@@ -301,10 +301,12 @@ const template = buildTemplatePayload({
   name: 'order_confirmation',
   language: 'en_US', // or { code: 'en_US', policy: 'deterministic' }
   components: [
-    { type: 'body', parameters: [{ type: 'text', text: 'Jessica' }] },
+    { type: 'body', parameters: [{ type: 'text', text: 'Jessica', parameter_name: 'customer_name' }] },
   ],
 });
 ```
+
+When you pass raw Meta-style components, keep the snake_case field (`parameter_name`) Meta expects.
 
 ### Typed builder
 
@@ -317,8 +319,8 @@ const template = buildTemplateSendPayload({
   name: 'order_confirmation',
   language: 'en_US',
   body: [
-    { type: 'text', text: 'Jessica' },
-    { type: 'text', text: 'SKBUP2-4CPIG9' },
+    { type: 'text', text: 'Jessica', parameterName: 'customerName' },
+    { type: 'text', text: 'SKBUP2-4CPIG9', parameterName: 'orderId' },
   ],
   buttons: [
     {
@@ -330,6 +332,8 @@ const template = buildTemplateSendPayload({
   ],
 });
 ```
+
+The typed builder accepts camelCase `parameterName` and the client automatically snake-cases it when sending.
 
 ### Template creation
 
@@ -353,6 +357,27 @@ const authenticationTemplate = buildTemplateDefinition({
   ],
 });
 
+// Named parameters (parameter_format = NAMED)
+const namedOrderTemplate = buildTemplateDefinition({
+  name: 'order_confirmation_named',
+  language: 'en_US',
+  category: 'UTILITY',
+  parameterFormat: 'NAMED',
+  components: [
+    {
+      type: 'BODY',
+      text: 'Thank you, {{customer_name}}! Your order {{order_number}} ships {{ship_date}}.',
+      example: {
+        bodyTextNamedParams: [
+          { paramName: 'customer_name', example: 'Pablo' },
+          { paramName: 'order_number', example: '860198-230332' },
+          { paramName: 'ship_date', example: '2025-11-15' },
+        ],
+      },
+    },
+  ],
+});
+
 // Limited-time offer
 const limitedTimeOfferTemplate = buildTemplateDefinition({
   name: 'limited_offer', language: 'en_US', category: 'MARKETING',
@@ -368,6 +393,8 @@ const catalogTemplate = buildTemplateDefinition({
   components: [ { type: 'BODY', text: 'Browse our catalog' }, { type: 'BUTTONS', buttons: [{ type: 'CATALOG', text: 'View catalog' }] } ],
 });
 ```
+
+`parameterFormat` matches the API’s `parameter_format` field. When set to `"NAMED"`, use named placeholders (for example `{{customer_name}}`) and provide examples via `bodyTextNamedParams` / `headerTextNamedParams` so WhatsApp can validate your template.
 
 ## Query history & contacts
 
@@ -430,11 +457,37 @@ const templateDefinition = TemplateDefinition.buildTemplateDefinition({
   name: "seasonal_promo",
   language: "en_US",
   category: "MARKETING",
+  parameterFormat: "NAMED",
   components: [
-    { type: "HEADER", format: "TEXT", text: "Our {{1}} is on!", example: { headerText: ["Summer Sale"] } },
-    { type: "BODY", text: "Shop now through {{1}} using code {{2}}", example: { bodyText: [["Aug 31", "SALE25"]] } },
+    {
+      type: "HEADER",
+      format: "TEXT",
+      text: "Our {{sale_name}} is on!",
+      example: { headerTextNamedParams: [{ paramName: "sale_name", example: "Summer Sale" }] }
+    },
+    {
+      type: "BODY",
+      text: "Shop now through {{end_date}} using code {{discount_code}}",
+      example: {
+        bodyTextNamedParams: [
+          { paramName: "end_date", example: "Aug 31" },
+          { paramName: "discount_code", example: "SALE25" }
+        ]
+      }
+    },
     { type: "FOOTER", text: "Tap a button below" },
-    { type: "BUTTONS", buttons: [ { type: "QUICK_REPLY", text: "Unsubscribe" }, { type: "URL", text: "Shop", url: "https://store.example/promo" } ] },
+    {
+      type: "BUTTONS",
+      buttons: [
+        { type: "QUICK_REPLY", text: "Unsubscribe" },
+        {
+          type: "URL",
+          text: "Shop",
+          url: "https://store.example/promo?code={{discount_code}}",
+          example: ["SALE25"]
+        }
+      ]
+    }
   ],
 });
 
@@ -443,6 +496,7 @@ await client.templates.create({
   name: templateDefinition.name,
   language: templateDefinition.language,
   category: templateDefinition.category,
+  parameterFormat: templateDefinition.parameterFormat,
   components: templateDefinition.components,
 });
 ```

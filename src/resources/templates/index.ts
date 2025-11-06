@@ -27,6 +27,7 @@ const createSchema = z.object({
   name: z.string().min(1, "name is required"),
   language: z.string().min(1, "language is required"),
   category: z.string().min(1, "category is required"),
+  parameterFormat: z.enum(["NAMED", "POSITIONAL"]).optional(),
   allowCategoryChange: z.boolean().optional(),
   components: z.array(componentSchema).nonempty(),
   qualityScoreCategory: z.string().optional()

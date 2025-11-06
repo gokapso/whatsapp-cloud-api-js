@@ -78,17 +78,24 @@ describe("Templates resource", () => {
       name: "seasonal_promotion",
       language: "en_US",
       category: "MARKETING",
+      parameterFormat: "NAMED",
       components: [
         {
           type: "HEADER",
           format: "TEXT",
-          text: "Our {{1}} is on!",
-          example: { headerText: ["Summer Sale"] }
+          text: "Our {{sale_name}} is on!",
+          example: { headerTextNamedParams: [{ paramName: "sale_name", example: "Summer Sale" }] }
         },
         {
           type: "BODY",
-          text: "Shop now through {{1}} and use code {{2}} to get {{3}} off of all merchandise.",
-          example: { bodyText: [["the end of August", "25OFF", "25%"]] }
+          text: "Shop now through {{end_date}} and use code {{discount_code}} to get {{discount_value}} off of all merchandise.",
+          example: {
+            bodyTextNamedParams: [
+              { paramName: "end_date", example: "the end of August" },
+              { paramName: "discount_code", example: "25OFF" },
+              { paramName: "discount_value", example: "25%" }
+            ]
+          }
         }
       ]
     });
@@ -101,7 +108,8 @@ describe("Templates resource", () => {
       name: "seasonal_promotion",
       language: "en_US",
       category: "MARKETING",
-      components: expect.any(Array)
+      components: expect.any(Array),
+      parameter_format: "NAMED"
     });
   });
 

@@ -351,32 +351,32 @@ describe("Template send payload builder", () => {
     ).toThrowError(/>=1 characters/);
   });
 
-  it("preserves parameter_name fields for named parameters", () => {
+  it("preserves parameterName fields for named parameters", () => {
     const template = buildTemplateSendPayload({
       name: "named",
       language: "en_US",
-      header: { type: "text", text: "Hi", parameter_name: "header_name" },
+      header: { type: "text", text: "Hi", parameterName: "header_name" },
       body: [
-        { type: "text", text: "Customer", parameter_name: "customer" },
+        { type: "text", text: "Customer", parameterName: "customer" },
         {
           type: "currency",
           currency: { fallbackValue: "$10", code: "USD", amount1000: 10000 },
-          parameter_name: "amount"
+          parameterName: "amount"
         },
-        { type: "date_time", dateTime: { fallbackValue: "Tomorrow" }, parameter_name: "appointment" }
+        { type: "date_time", dateTime: { fallbackValue: "Tomorrow" }, parameterName: "appointment" }
       ],
       buttons: [
         {
           type: "button",
           subType: "url",
           index: 0,
-          parameters: [{ type: "text", text: "CODE", parameter_name: "code" }]
+          parameters: [{ type: "text", text: "CODE", parameterName: "code" }]
         },
         {
           type: "button",
           subType: "quick_reply",
           index: 1,
-          parameters: [{ type: "payload", payload: "ACK", parameter_name: "reply" }]
+          parameters: [{ type: "payload", payload: "ACK", parameterName: "reply" }]
         }
       ]
     });
@@ -387,9 +387,7 @@ describe("Template send payload builder", () => {
     if (!header || header.type !== "header") {
       throw new Error("Expected header component");
     }
-    expect(header.parameters).toEqual([
-      expect.objectContaining({ parameter_name: "header_name" })
-    ]);
+    expect(header.parameters).toEqual([expect.objectContaining({ parameterName: "header_name" })]);
 
     const body = components.find((component) => component.type === "body");
     expect(body).toBeDefined();
@@ -398,9 +396,9 @@ describe("Template send payload builder", () => {
     }
     expect(body.parameters).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ parameter_name: "customer" }),
-        expect.objectContaining({ parameter_name: "amount" }),
-        expect.objectContaining({ parameter_name: "appointment" })
+        expect.objectContaining({ parameterName: "customer" }),
+        expect.objectContaining({ parameterName: "amount" }),
+        expect.objectContaining({ parameterName: "appointment" })
       ])
     );
 
@@ -411,9 +409,7 @@ describe("Template send payload builder", () => {
     if (!urlButton || urlButton.type !== "button") {
       throw new Error("Expected url button component");
     }
-    expect(urlButton.parameters).toEqual([
-      expect.objectContaining({ parameter_name: "code" })
-    ]);
+    expect(urlButton.parameters).toEqual([expect.objectContaining({ parameterName: "code" })]);
 
     const quickReplyButton = components.find(
       (component) => component.type === "button" && (component as any).subType === "quick_reply"
@@ -422,9 +418,7 @@ describe("Template send payload builder", () => {
     if (!quickReplyButton || quickReplyButton.type !== "button") {
       throw new Error("Expected quick reply button component");
     }
-    expect(quickReplyButton.parameters).toEqual([
-      expect.objectContaining({ parameter_name: "reply" })
-    ]);
+    expect(quickReplyButton.parameters).toEqual([expect.objectContaining({ parameterName: "reply" })]);
   });
 
 });

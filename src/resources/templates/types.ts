@@ -3,7 +3,7 @@ export interface TemplateLanguage {
   policy?: "deterministic";
 }
 
-type NamedTemplateParameter = { parameter_name?: string };
+type NamedTemplateParameter = { parameterName?: string };
 
 export type TemplateHeaderParameter =
   | ({ type: "text"; text: string } & NamedTemplateParameter & Record<string, unknown>)
