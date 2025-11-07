@@ -24,8 +24,8 @@ const client = new WhatsAppClient({
 });
 
 await client.messages.sendText({
-  phoneNumberId: "<PHONE_NUMBER_ID>",
-  to: "+15551234567",
+  phoneNumberId: "<9993512043>",
+  to: "999 351 2043",
   body: "Hello from Kapso",
 });
 ```
