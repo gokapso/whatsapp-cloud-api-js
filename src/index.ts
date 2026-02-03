@@ -1,5 +1,5 @@
 export { WhatsAppClient } from "./client";
-export type { WhatsAppClientConfig, RequestOptions } from "./client";
+export type { WhatsAppClientConfig, RequestOptions, RetryConfig } from "./client";
 export { MessagesResource } from "./resources/messages";
 export { MediaResource } from "./resources/media";
 export { TemplatesResource } from "./resources/templates";
