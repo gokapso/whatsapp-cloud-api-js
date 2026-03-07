@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { WhatsAppClient } from "../../client";
 import type {
+  MessageTemplate,
   TemplateCreateResponse,
   TemplateDeleteResponse,
   TemplateListResponse
@@ -39,9 +40,16 @@ const deleteSchema = z.object({
   language: z.string().optional()
 });
 
+const getSchema = z.object({
+  businessAccountId: z.string().min(1, "businessAccountId is required"),
+  templateId: z.string().min(1, "templateId is required"),
+  fields: z.string().optional()
+});
+
 type ListInput = z.infer<typeof listSchema>;
 type CreateInput = z.infer<typeof createSchema>;
 type DeleteInput = z.infer<typeof deleteSchema>;
+type GetInput = z.infer<typeof getSchema>;
 
 /**
  * CRUD for message templates on a WhatsApp Business Account (WABA).
@@ -76,6 +84,16 @@ export class TemplatesResource {
 
     return this.client.request<TemplateDeleteResponse>("DELETE", `${businessAccountId}/message_templates`, {
       query: removeUndefined(query),
+      responseType: "json"
+    });
+  }
+
+  async get(input: GetInput): Promise<MessageTemplate> {
+    const parsed = getSchema.parse(input);
+    const { businessAccountId, templateId, fields } = parsed;
+
+    return this.client.request<MessageTemplate>("GET", `${businessAccountId}/message_templates/${templateId}`, {
+      query: removeUndefined({ fields }),
       responseType: "json"
     });
   }

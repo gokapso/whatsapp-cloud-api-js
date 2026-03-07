@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { WhatsAppClient } from "../../client";
-import type { MessageListResponse, SendMessageResponse } from "../../types";
+import type { MessageListResponse, SendMessageResponse, UnifiedMessage } from "../../types";
 import { assertKapsoProxy } from "../shared";
 import { MessageTransport } from "./base";
 import type { GraphSuccessResponse } from "../../types";
@@ -45,6 +45,12 @@ const queryHistorySchema = z
     fields: z.string().optional()
   })
   .passthrough();
+
+const getMessageSchema = z.object({
+  phoneNumberId: z.string().min(1),
+  messageId: z.string().min(1),
+  fields: z.string().optional()
+});
 
 function cleanQuery(query: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
@@ -171,6 +177,13 @@ export class MessagesResource {
     return this.interactiveSender.sendRaw(input);
   }
 
+  async sendRaw(input: {
+    payload: Record<string, unknown>;
+    phoneNumberId: string;
+  }): Promise<SendMessageResponse> {
+    return this.transport.send(input.phoneNumberId, input.payload);
+  }
+
   async markRead(input: { phoneNumberId: string; messageId: string; typingIndicator?: { type: "text" } }): Promise<GraphSuccessResponse> {
     const payload = {
       messagingProduct: "whatsapp",
@@ -193,6 +206,26 @@ export class MessagesResource {
       query,
       responseType: "json"
     });
+  }
+
+  async get(input: z.infer<typeof getMessageSchema>): Promise<UnifiedMessage> {
+    assertKapsoProxy(this.client, "Message history API");
+    const { phoneNumberId, messageId, fields } = getMessageSchema.parse(input);
+
+    const response = await this.client.request<UnifiedMessage | { data: UnifiedMessage }>(
+      "GET",
+      `${phoneNumberId}/messages/${messageId}`,
+      {
+        query: cleanQuery({ fields }),
+        responseType: "json"
+      }
+    );
+
+    if (response && typeof response === "object" && "data" in response) {
+      return (response as { data: UnifiedMessage }).data;
+    }
+
+    return response as UnifiedMessage;
   }
 
   async listByConversation(input: {

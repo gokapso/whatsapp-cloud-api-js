@@ -103,6 +103,29 @@ describe("Message history API", () => {
     expect(page.paging.cursors.after).toBeNull();
   });
 
+  it("gets a single message by id", async () => {
+    const { fetchMock, calls } = setupFetch({
+      id: "msg-3",
+      type: "text",
+      timestamp: "1735689900",
+      text: { body: "One message" }
+    });
+
+    const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: "key", fetch: fetchMock });
+
+    const message = await client.messages.get({
+      phoneNumberId: "123",
+      messageId: "msg-3"
+    });
+
+    expect(calls[0]?.url).toBe("https://api.kapso.ai/meta/whatsapp/v23.0/123/messages/msg-3");
+    expect(message).toMatchObject({
+      id: "msg-3",
+      type: "text",
+      text: { body: "One message" }
+    });
+  });
+
   it("parses specialized message payloads mirroring Meta", async () => {
     const { fetchMock } = setupFetch({
       data: [

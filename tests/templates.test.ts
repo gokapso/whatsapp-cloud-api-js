@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { WhatsAppClient } from "../src";
-import type { TemplateCreateResponse, TemplateDeleteResponse, TemplateListResponse } from "../src";
+import type { MessageTemplate, TemplateCreateResponse, TemplateDeleteResponse, TemplateListResponse } from "../src";
 
 const graphListResponse = {
   data: [
@@ -131,5 +131,30 @@ describe("Templates resource", () => {
       "https://graph.facebook.com/v23.0/102290129340398/message_templates?name=seasonal_promotion&language=en_US"
     );
     expect(calls[0]?.init.method).toBe("DELETE");
+  });
+
+  it("retrieves a template by id", async () => {
+    const template: MessageTemplate = {
+      category: "UTILITY",
+      id: "564750795574598",
+      language: "en_US",
+      name: "order_confirmation",
+      status: "APPROVED"
+    };
+    const { fetchMock, calls } = setupFetch(template);
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    const result = await client.templates.get({
+      businessAccountId: "102290129340398",
+      templateId: "564750795574598",
+      fields: "status"
+    });
+
+    expect(result).toEqual(template);
+    expectTypeOf(result).toMatchTypeOf<MessageTemplate>();
+    expect(calls[0]?.url).toBe(
+      "https://graph.facebook.com/v23.0/102290129340398/message_templates/564750795574598?fields=status"
+    );
+    expect(calls[0]?.init.method).toBe("GET");
   });
 });

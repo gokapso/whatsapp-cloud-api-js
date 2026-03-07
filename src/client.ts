@@ -73,7 +73,7 @@ export class WhatsAppClient {
     this.kapsoApiKey = config.kapsoApiKey;
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE_URL);
     this.graphVersion = config.graphVersion ?? DEFAULT_GRAPH_VERSION;
-    this.kapsoProxy = detectKapsoProxy(this.baseUrl);
+    this.kapsoProxy = detectKapsoProxy(this.baseUrl, this.kapsoApiKey);
     this.fetchImpl = config.fetch ?? globalThis.fetch;
 
     if (typeof this.fetchImpl !== "function") {
@@ -218,7 +218,11 @@ function normalizeBaseUrl(input: string): string {
   return input.replace(/\/+$/, "");
 }
 
-function detectKapsoProxy(baseUrl: string): boolean {
+function detectKapsoProxy(baseUrl: string, kapsoApiKey?: string): boolean {
+  if (typeof kapsoApiKey === "string" && kapsoApiKey.length > 0) {
+    return true;
+  }
+
   try {
     const url = new URL(baseUrl);
     return url.hostname.endsWith("kapso.ai");
