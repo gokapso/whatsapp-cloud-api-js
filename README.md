@@ -46,8 +46,8 @@ Query conversations, messages, contacts, and more.
 
 ### Core
 
-- [`client.messages`](#sending-messages) — send text/media/interactive/templates and mark messages as read
-- [`client.templates`](#templates) — list/create/delete templates on your WABA
+- [`client.messages`](#sending-messages) — send text/media/interactive/templates, send raw payloads, and mark messages as read
+- [`client.templates`](#templates) — list/get/create/delete templates on your WABA
 - [`client.media`](#sending-messages) — upload media, fetch metadata, delete media
 - [`client.phoneNumbers`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/phone-numbers) — request/verify code, register/deregister, settings, business profile
 - [`client.flows`](#flows) — author, validate, deploy, and preview WhatsApp Flows
@@ -61,7 +61,7 @@ Query conversations, messages, contacts, and more.
  Requires `baseUrl` and `kapsoApiKey`.
 
 - [`client.conversations`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/conversations) — list/get/update conversations across your project
-- [`client.messages.query` / `listByConversation`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/messages) — pull stored message history
+- [`client.messages.query` / `listByConversation` / `get`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/messages) — pull stored message history
 - [`client.contacts`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/contacts) — list/get/update contacts, with `customerId` filter
 - [`client.calls`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/calls) — initiate calls plus historic call logs (`list`/`get`) and permission helpers
 - [`Kapso Extensions`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/kapso-extensions) — opt-in to extra fields via `fields=kapso(...)`
@@ -104,6 +104,20 @@ await client.messages.sendText({
   phoneNumberId: "<PHONE_NUMBER_ID>",
   to: "+15551234567",
   body: "Hello!",
+});
+```
+
+### Raw payload
+```ts
+await client.messages.sendRaw({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  payload: {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: "+15551234567",
+    type: "text",
+    text: { body: "Hello from a raw payload" },
+  },
 });
 ```
 
@@ -425,6 +439,12 @@ const history = await client.messages.query({
   after: conversations.paging.cursors.after,
 });
 
+const message = await client.messages.get({
+  phoneNumberId: "647015955153740",
+  messageId: history.data[0].id,
+  fields: "kapso(default)",
+});
+
 // Contacts
 const contacts = await client.contacts.list({ phoneNumberId: "647015955153740", customerId: "123", });
 await client.contacts.update({
@@ -498,6 +518,15 @@ await client.templates.create({
   category: templateDefinition.category,
   parameterFormat: templateDefinition.parameterFormat,
   components: templateDefinition.components,
+});
+```
+
+### Get a template
+
+```ts
+const template = await client.templates.get({
+  businessAccountId: "<WABA_ID>",
+  templateId: "<TEMPLATE_ID>",
 });
 ```
 
