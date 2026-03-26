@@ -8,6 +8,24 @@ import { CallsResource } from "./resources/calls";
 import { ConversationsResource } from "./resources/conversations";
 import { ContactsResource } from "./resources/contacts";
 import { FlowsResource } from "./resources/flows";
+import { GraphApiError, type RetryHint } from "./errors";
+
+/**
+ * Configuration for automatic retry behavior.
+ * @category Client
+ */
+export interface RetryConfig {
+  /** Maximum number of retry attempts (default: 3) */
+  maxAttempts?: number;
+  /** Initial delay in milliseconds for exponential backoff (default: 1000) */
+  initialDelayMs?: number;
+  /** Maximum delay in milliseconds (default: 30000) */
+  maxDelayMs?: number;
+  /** HTTP status codes that should trigger retry (default: [429, 500, 502, 503, 504]) */
+  retryableStatuses?: number[];
+  /** Whether retry is enabled (default: true) */
+  enabled?: boolean;
+}
 
 /**
  * Configuration for {@link WhatsAppClient}.
@@ -24,6 +42,8 @@ export interface WhatsAppClientConfig {
   graphVersion?: string;
   /** Custom fetch implementation (useful for tests and non-Node runtimes) */
   fetch?: typeof fetch;
+  /** Configuration for automatic retry behavior */
+  retry?: RetryConfig;
 }
 
 /** Options for {@link WhatsAppClient.request}. @category Client */
@@ -40,6 +60,14 @@ export interface RequestOptions {
 
 const DEFAULT_BASE_URL = "https://graph.facebook.com";
 const DEFAULT_GRAPH_VERSION = "v23.0";
+
+const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
+  maxAttempts: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 30000,
+  retryableStatuses: [429, 500, 502, 503, 504],
+  enabled: true,
+};
 
 /**
  * Minimal, fetch-based client for the WhatsApp Business Cloud API.
@@ -63,6 +91,7 @@ export class WhatsAppClient {
   private readonly graphVersion: string;
   private readonly fetchImpl: typeof fetch;
   private readonly kapsoProxy: boolean;
+  private readonly retryConfig: Required<RetryConfig>;
 
   constructor(config: WhatsAppClientConfig) {
     if (!config?.accessToken && !config?.kapsoApiKey) {
@@ -80,6 +109,16 @@ export class WhatsAppClient {
       throw new Error("Global fetch API is not available. Please supply a custom fetch implementation.");
     }
 
+    // Initialize retry config with defaults
+    const userRetryConfig = config.retry ?? {};
+    this.retryConfig = {
+      maxAttempts: userRetryConfig.maxAttempts ?? DEFAULT_RETRY_CONFIG.maxAttempts,
+      initialDelayMs: userRetryConfig.initialDelayMs ?? DEFAULT_RETRY_CONFIG.initialDelayMs,
+      maxDelayMs: userRetryConfig.maxDelayMs ?? DEFAULT_RETRY_CONFIG.maxDelayMs,
+      retryableStatuses: userRetryConfig.retryableStatuses ?? DEFAULT_RETRY_CONFIG.retryableStatuses,
+      enabled: userRetryConfig.enabled ?? DEFAULT_RETRY_CONFIG.enabled,
+    };
+
     this.messages = new MessagesResource(this);
     this.media = new MediaResource(this);
     this.templates = new TemplatesResource(this);
@@ -92,6 +131,64 @@ export class WhatsAppClient {
 
   isKapsoProxy(): boolean {
     return this.kapsoProxy;
+  }
+
+  /**
+   * Determines if an error should be retried based on the error's retry hint and configuration.
+   */
+  private shouldRetry(error: unknown, attempt: number): boolean {
+    if (!this.retryConfig.enabled) {
+      return false;
+    }
+
+    if (attempt >= this.retryConfig.maxAttempts) {
+      return false;
+    }
+
+    if (!(error instanceof GraphApiError)) {
+      return false;
+    }
+
+    const { retry, httpStatus } = error;
+
+    if (retry.action === "do_not_retry") {
+      return false;
+    }
+
+    if (retry.action === "refresh_token") {
+      return false;
+    }
+
+    if (this.retryConfig.retryableStatuses.includes(httpStatus)) {
+      return true;
+    }
+
+    if (retry.action === "retry_after") {
+      return true;
+    }
+
+    if (retry.action === "retry" && httpStatus >= 500) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Calculates the delay before the next retry attempt using exponential backoff with jitter.
+   * Respects server-provided retryAfterMs when available.
+   */
+  private calculateBackoffDelay(attempt: number, retryHint?: RetryHint): number {
+    if (retryHint?.retryAfterMs !== undefined) {
+      return Math.min(retryHint.retryAfterMs, this.retryConfig.maxDelayMs);
+    }
+
+    const exponentialDelay = this.retryConfig.initialDelayMs * Math.pow(2, attempt);
+
+    const jitter = Math.random() * 0.3 * exponentialDelay;
+
+    const totalDelay = exponentialDelay + jitter;
+    return Math.min(totalDelay, this.retryConfig.maxDelayMs);
   }
 
   /** Perform an HTTP request and parse JSON into type T. */
@@ -127,13 +224,37 @@ export class WhatsAppClient {
       }
     }
 
-    const response = await this.fetchImpl(url, init);
+    // Retry logic
+    let lastError: unknown;
+    let attempt = 0;
 
-    if (responseType === "json") {
-      return parseJsonResponse(response);
+    while (attempt < this.retryConfig.maxAttempts) {
+      try {
+        const response = await this.fetchImpl(url, init);
+
+        if (responseType === "json") {
+          return parseJsonResponse(response);
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error;
+
+        // Check if we should retry
+        if (!this.shouldRetry(error, attempt + 1)) {
+          throw error;
+        }
+
+        attempt++;
+
+        // Calculate delay and wait before retrying
+        const retryHint = error instanceof GraphApiError ? error.retry : undefined;
+        const delay = this.calculateBackoffDelay(attempt - 1, retryHint);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
 
-    return response;
+    throw lastError;
   }
 
   /**
