@@ -61,6 +61,8 @@ export interface MediaUploadResponse {
 export interface MediaMetadataResponse {
   messagingProduct: "whatsapp";
   url: string;
+  downloadUrl?: string;
+  downloadUrlExpiresAt?: string;
   mimeType: string;
   sha256: string;
   fileSize: string;

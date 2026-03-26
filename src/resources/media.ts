@@ -92,7 +92,8 @@ export class MediaResource {
     }
 
     const metadata = await this.get({ mediaId: parsed.mediaId, phoneNumberId: parsed.phoneNumberId });
-    const url = new URL(metadata.url);
+    const targetUrl = metadata.downloadUrl ?? metadata.url;
+    const url = new URL(targetUrl);
     const host = url.hostname.toLowerCase();
     const isKapsoHost = host.endsWith("kapso.ai");
     const authMode = input.auth ?? "auto";
@@ -106,13 +107,13 @@ export class MediaResource {
     const wantAuth = authMode === "always" || (authMode === "auto" && isKapsoHost);
 
     if (wantAuth) {
-      res = await clientWithFetch.fetch(metadata.url, { headers: input.headers });
+      res = await clientWithFetch.fetch(targetUrl, { headers: input.headers });
     } else {
       // No auth headers for public CDNs (e.g., lookaside.cdnwhatsapp.net)
-      res = await clientWithFetch.rawFetch(metadata.url, { headers: input.headers });
+      res = await clientWithFetch.rawFetch(targetUrl, { headers: input.headers });
       // Safety net: if Kapso host signals 401/403 and auto mode, retry once with auth
       if ((res.status === 401 || res.status === 403) && authMode === "auto" && isKapsoHost) {
-        res = await clientWithFetch.fetch(metadata.url, { headers: input.headers });
+        res = await clientWithFetch.fetch(targetUrl, { headers: input.headers });
       }
     }
 

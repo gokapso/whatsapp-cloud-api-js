@@ -150,6 +150,44 @@ describe("MediaResource.download", () => {
     expect([...view]).toEqual([9, 8, 7, 6]);
   });
 
+  it("prefers Kapso downloadUrl over raw Meta url when both are present", async () => {
+    const metaUrl = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=MEDIA_ID";
+    const kapsoDownloadUrl = "https://api.kapso.ai/meta/whatsapp/media_download?token=abc123";
+    const { fetchMock, calls } = setupFetch([
+      () => new Response(
+        JSON.stringify({
+          messaging_product: "whatsapp",
+          url: metaUrl,
+          download_url: kapsoDownloadUrl,
+          mime_type: "image/jpeg",
+          sha256: "hash",
+          file_size: "4",
+          id: "MEDIA_ID"
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      ),
+      () => new Response(new Uint8Array([7, 7, 7, 7]), {
+        status: 200,
+        headers: { "Content-Type": "image/jpeg" }
+      })
+    ]);
+
+    const client = new WhatsAppClient({
+      kapsoApiKey: "kapso",
+      baseUrl: "https://api.kapso.ai/meta/whatsapp",
+      fetch: fetchMock
+    });
+
+    const bytes = await client.media.download({ mediaId: "MEDIA_ID", phoneNumberId: "123" });
+
+    expect(calls[0]?.url).toBe("https://api.kapso.ai/meta/whatsapp/v23.0/MEDIA_ID?phone_number_id=123");
+    expect(calls[1]?.url).toBe(kapsoDownloadUrl);
+    const headers2 = (calls[1]?.init.headers ?? {}) as Record<string, string>;
+    expect(headers2["X-API-Key"]).toBe("kapso");
+    const view = new Uint8Array(bytes as ArrayBuffer);
+    expect([...view]).toEqual([7, 7, 7, 7]);
+  });
+
   it("returns a Blob when as=blob and keeps content type", async () => {
     const metaUrl = "https://lookaside.cdnwhatsapp.net/m/xyz";
     const { fetchMock } = setupFetch([
