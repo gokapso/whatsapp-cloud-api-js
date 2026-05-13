@@ -106,7 +106,23 @@ export type TemplateButtonComponent =
   | TemplateButtonFlowComponent
   | TemplateButtonCatalogComponent;
 
-export type TemplateComponent = TemplateHeaderComponent | TemplateBodyComponent | TemplateButtonComponent;
+export type TemplateCarouselCardComponent = TemplateHeaderComponent | TemplateBodyComponent | TemplateButtonComponent;
+
+export interface TemplateCarouselCard {
+  cardIndex: number;
+  components: TemplateCarouselCardComponent[];
+}
+
+export interface TemplateCarouselComponent {
+  type: "carousel";
+  cards: TemplateCarouselCard[];
+}
+
+export type TemplateComponent =
+  | TemplateHeaderComponent
+  | TemplateBodyComponent
+  | TemplateButtonComponent
+  | TemplateCarouselComponent;
 
 export interface TemplateSendPayload {
   name: string;

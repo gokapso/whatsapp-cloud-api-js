@@ -1,5 +1,10 @@
 import { z } from "zod";
-import type { TemplateSendPayload, TemplateButtonComponent, TemplateComponent } from "./types";
+import type {
+  TemplateCarouselCard,
+  TemplateSendPayload,
+  TemplateButtonComponent,
+  TemplateComponent
+} from "./types";
 
 // Header parameters for sending a template
 const headerParamSchema = z.discriminatedUnion("type", [
@@ -107,20 +112,33 @@ const buttonFlowSchema = z.object({
 
 const buttonParamSchema = z.union([buttonQuickReplySchema, buttonUrlSchema, buttonPhoneSchema, buttonCopyCodeSchema, buttonFlowSchema]);
 
+const carouselCardComponentSchema = z.union([
+  z.object({
+    type: z.literal("header"),
+    parameters: z.tuple([headerParamSchema])
+  }),
+  z.object({
+    type: z.literal("body"),
+    parameters: z.array(bodyParamSchema).min(1)
+  }),
+  buttonParamSchema
+]);
+
+const carouselCardSchema = z.object({
+  cardIndex: z.number().int().min(0),
+  components: z.array(carouselCardComponentSchema).min(1)
+});
+
 export const templateSendInputSchema = z.object({
   name: z.string().min(1),
   language: z.string().min(1),
   header: headerParamSchema.optional(),
   body: z.array(bodyParamSchema).optional(),
+  cards: z.array(carouselCardSchema).min(1).optional(),
   buttons: z.array(buttonParamSchema).optional()
 });
 
 export type TemplateSendInput = z.infer<typeof templateSendInputSchema>;
-
-// Strongly-typed component shapes matching Meta wire schema (camelCase input; SDK snake-cases on send)
-type HeaderComponent = { type: "header"; parameters: [z.infer<typeof headerParamSchema>] };
-type BodyComponent = { type: "body"; parameters: Array<z.infer<typeof bodyParamSchema>> };
-type ButtonComponent = z.infer<typeof buttonParamSchema>; // { type: 'button', subType: ..., index, parameters? }
 
 /**
  * Build a Template message payload from typed parameters.
@@ -140,6 +158,9 @@ export function buildTemplateSendPayload(input: TemplateSendInput): TemplateSend
   }
   if (parsed.body && parsed.body.length > 0) {
     components.push({ type: "body", parameters: parsed.body });
+  }
+  if (parsed.cards && parsed.cards.length > 0) {
+    components.push({ type: "carousel", cards: parsed.cards as TemplateCarouselCard[] });
   }
   if (parsed.buttons && parsed.buttons.length > 0) {
     for (const btn of parsed.buttons) {
