@@ -4,6 +4,7 @@ import type {
   TemplateComponent,
   TemplateBodyComponent,
   TemplateButtonComponent,
+  TemplateCarouselComponent,
   TemplateHeaderComponent,
   TemplateSendPayload
 } from "../src/resources/templates/types";
@@ -25,6 +26,13 @@ function expectBody(component: TemplateComponent): TemplateBodyComponent {
 function expectButton(component: TemplateComponent): TemplateButtonComponent {
   if (component.type !== "button") {
     throw new Error(`Expected button component, received ${component.type}`);
+  }
+  return component;
+}
+
+function expectCarousel(component: TemplateComponent): TemplateCarouselComponent {
+  if (component.type !== "carousel") {
+    throw new Error(`Expected carousel component, received ${component.type}`);
   }
   return component;
 }
@@ -608,6 +616,159 @@ describe("buildTemplatePayload", () => {
         }
       ]
     });
+  });
+
+  it("normalizes carousel template cards from Meta-style components", () => {
+    const payload = buildTemplatePayload({
+      name: "flight_options_carousel_v1_2",
+      language: "pt_BR",
+      components: [
+        {
+          type: "BODY",
+          parameters: [{ type: "TEXT", text: "Lucas" }]
+        },
+        {
+          type: "CAROUSEL",
+          cards: [
+            {
+              card_index: 0,
+              components: [
+                {
+                  type: "HEADER",
+                  parameters: [
+                    { type: "IMAGE", image: { link: "https://example.com/flight-a.jpg" } }
+                  ]
+                },
+                {
+                  type: "BODY",
+                  parameters: [{ type: "TEXT", text: "12.000,00" }]
+                },
+                {
+                  type: "BUTTON",
+                  sub_type: "QUICK_REPLY",
+                  index: 0,
+                  parameters: [{ type: "PAYLOAD", payload: "OPT_1" }]
+                }
+              ]
+            },
+            {
+              cardIndex: 1,
+              components: [
+                {
+                  type: "header",
+                  parameters: [
+                    { type: "image", image: { id: "1517845519742750" } }
+                  ]
+                },
+                {
+                  type: "body",
+                  parameters: [{ type: "text", text: "13.500,00" }]
+                },
+                {
+                  type: "button",
+                  subType: "quick_reply",
+                  index: "0",
+                  parameters: [{ type: "payload", payload: "OPT_2" }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const components = expectComponents(payload);
+    expect(components.map((component) => component.type)).toEqual(["body", "carousel"]);
+    const carousel = expectCarousel(expectComponent(payload, 1));
+    expect(carousel.cards).toHaveLength(2);
+    expect(carousel.cards[0]).toMatchObject({
+      cardIndex: 0,
+      components: [
+        {
+          type: "header",
+          parameters: [
+            { type: "image", image: { link: "https://example.com/flight-a.jpg" } }
+          ]
+        },
+        {
+          type: "body",
+          parameters: [{ type: "text", text: "12.000,00" }]
+        },
+        {
+          type: "button",
+          subType: "quick_reply",
+          index: 0,
+          parameters: [{ type: "payload", payload: "OPT_1" }]
+        }
+      ]
+    });
+    expect(carousel.cards[1]).toMatchObject({
+      cardIndex: 1,
+      components: [
+        {
+          type: "header",
+          parameters: [
+            { type: "image", image: { id: "1517845519742750" } }
+          ]
+        },
+        {
+          type: "body",
+          parameters: [{ type: "text", text: "13.500,00" }]
+        },
+        {
+          type: "button",
+          subType: "quick_reply",
+          index: 0,
+          parameters: [{ type: "payload", payload: "OPT_2" }]
+        }
+      ]
+    });
+  });
+
+  it("throws when carousel cards are missing card_index", () => {
+    expect(() =>
+      buildTemplatePayload({
+        name: "tpl",
+        language: "en_US",
+        components: [
+          {
+            type: "carousel",
+            cards: [
+              {
+                components: [
+                  {
+                    type: "header",
+                    parameters: [{ type: "image", image: { link: "https://example.com/card.jpg" } }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      })
+    ).toThrowError(/components\[0\]\.cards\[0\]\.card_index is required/);
+  });
+
+  it("rejects nested carousel components inside carousel cards", () => {
+    expect(() =>
+      buildTemplatePayload({
+        name: "tpl",
+        language: "en_US",
+        components: [
+          {
+            type: "carousel",
+            cards: [
+              {
+                card_index: 0,
+                components: [
+                  { type: "carousel", cards: [] }
+                ]
+              }
+            ]
+          }
+        ]
+      })
+    ).toThrowError(/not supported inside carousel cards/);
   });
 
   it("accepts quick reply buttons and normalizes casing", () => {

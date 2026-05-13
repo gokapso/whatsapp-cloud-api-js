@@ -3,7 +3,6 @@ import type {
   TemplateBodyComponent,
   TemplateBodyParameter,
   TemplateButtonCatalogComponent,
-  TemplateButtonComponent,
   TemplateButtonCopyCodeComponent,
   TemplateButtonFlowComponent,
   TemplateButtonParameterFlow,
@@ -13,8 +12,10 @@ import type {
   TemplateButtonPhoneComponent,
   TemplateButtonQuickReplyComponent,
   TemplateButtonUrlComponent,
+  TemplateCarouselComponent,
   TemplateHeaderComponent,
   TemplateHeaderParameter,
+  TemplateComponent,
   TemplateSendPayload
 } from "./types";
 
@@ -60,37 +61,102 @@ export function buildTemplatePayload(input: RawTemplatePayloadInput): TemplateSe
   }
   const language = typeof parsed.language === "string" ? { code: parsed.language } : parsed.language;
 
-  const components = parsed.components.map((component, componentIndex) => {
-    const path = `components[${componentIndex}]`;
-    const typeRaw = (component as any).type;
-    if (typeof typeRaw !== "string") {
-      throw new Error(`${path}.type is required`);
-    }
-
-    const type = typeRaw.toLowerCase();
-
-    switch (type) {
-      case "header":
-        return {
-          type: "header",
-          parameters: [normalizeHeaderParameter(component.parameters, path)]
-        } satisfies TemplateHeaderComponent;
-      case "body":
-        return {
-          type: "body",
-          parameters: normalizeBodyParameters(component.parameters, path)
-        } satisfies TemplateBodyComponent;
-      case "button":
-        return normalizeButtonComponent(component, path);
-      default:
-        throw new Error(`${path}.type '${component.type}' is not supported`);
-    }
-  });
+  const components = parsed.components.map((component, componentIndex) =>
+    normalizeTemplateComponent(component, `components[${componentIndex}]`)
+  );
 
   return {
     name: parsed.name,
     language,
     components
+  };
+}
+
+function normalizeTemplateComponent(
+  component: Record<string, unknown>,
+  path: string,
+  options: { allowCarousel?: boolean } = { allowCarousel: true }
+): TemplateComponent {
+  const typeRaw = component.type;
+  if (typeof typeRaw !== "string") {
+    throw new Error(`${path}.type is required`);
+  }
+
+  const type = typeRaw.toLowerCase();
+
+  switch (type) {
+    case "header":
+      return {
+        type: "header",
+        parameters: [normalizeHeaderParameter(component.parameters, path)]
+      } satisfies TemplateHeaderComponent;
+    case "body":
+      return {
+        type: "body",
+        parameters: normalizeBodyParameters(component.parameters, path)
+      } satisfies TemplateBodyComponent;
+    case "button":
+      return normalizeButtonComponent(component, path);
+    case "carousel":
+      if (options.allowCarousel === false) {
+        throw new Error(`${path}.type 'carousel' is not supported inside carousel cards`);
+      }
+      return normalizeCarouselComponent(component, path);
+    default:
+      throw new Error(`${path}.type '${String(component.type)}' is not supported`);
+  }
+}
+
+function normalizeCarouselComponent(component: Record<string, unknown>, path: string): TemplateCarouselComponent {
+  const cards = component.cards;
+  if (!Array.isArray(cards) || cards.length === 0) {
+    throw new Error(`${path}.cards must be a non-empty array`);
+  }
+
+  return {
+    type: "carousel",
+    cards: cards.map((card, index) => normalizeCarouselCard(card, `${path}.cards[${index}]`))
+  };
+}
+
+function normalizeCarouselCard(card: unknown, path: string) {
+  if (!card || typeof card !== "object" || Array.isArray(card)) {
+    throw new Error(`${path} must be an object`);
+  }
+
+  const cardRecord = card as Record<string, unknown>;
+  const cardIndexRaw = cardRecord.cardIndex ?? cardRecord.card_index;
+  if (cardIndexRaw === undefined || cardIndexRaw === null) {
+    throw new Error(`${path}.card_index is required`);
+  }
+
+  const cardIndex = typeof cardIndexRaw === "string" ? Number(cardIndexRaw) : cardIndexRaw;
+  if (typeof cardIndex !== "number" || !Number.isInteger(cardIndex) || cardIndex < 0) {
+    throw new Error(`${path}.card_index must be a non-negative integer`);
+  }
+
+  const components = cardRecord.components;
+  if (!Array.isArray(components) || components.length === 0) {
+    throw new Error(`${path}.components must be a non-empty array`);
+  }
+
+  return {
+    cardIndex,
+    components: components.map((component, index) => {
+      if (!component || typeof component !== "object" || Array.isArray(component)) {
+        throw new Error(`${path}.components[${index}] must be an object`);
+      }
+
+      const normalized = normalizeTemplateComponent(
+        component as Record<string, unknown>,
+        `${path}.components[${index}]`,
+        { allowCarousel: false }
+      );
+      if (normalized.type === "carousel") {
+        throw new Error(`${path}.components[${index}].type 'carousel' is not supported inside carousel cards`);
+      }
+      return normalized;
+    })
   };
 }
 

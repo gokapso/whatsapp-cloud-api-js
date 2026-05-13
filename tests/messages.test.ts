@@ -530,6 +530,85 @@ describe("Messages resource", () => {
     });
   });
 
+  it("sends a carousel template message with nested card components", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendTemplate({
+      phoneNumberId: "123",
+      to: "15551234567",
+      template: {
+        name: "flight_options_carousel_v1_2",
+        language: { code: "pt_BR" },
+        components: [
+          {
+            type: "carousel",
+            cards: [
+              {
+                card_index: 0,
+                components: [
+                  {
+                    type: "header",
+                    parameters: [
+                      { type: "image", image: { link: "https://example.com/flight-a.jpg" } }
+                    ]
+                  },
+                  {
+                    type: "body",
+                    parameters: [{ type: "text", text: "12.000,00" }]
+                  },
+                  {
+                    type: "button",
+                    sub_type: "quick_reply",
+                    index: 0,
+                    parameters: [{ type: "payload", payload: "OPT_1" }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      type: "template",
+      template: {
+        name: "flight_options_carousel_v1_2",
+        language: { code: "pt_BR" },
+        components: [
+          {
+            type: "carousel",
+            cards: [
+              {
+                card_index: 0,
+                components: [
+                  {
+                    type: "header",
+                    parameters: [
+                      { type: "image", image: { link: "https://example.com/flight-a.jpg" } }
+                    ]
+                  },
+                  {
+                    type: "body",
+                    parameters: [{ type: "text", text: "12.000,00" }]
+                  },
+                  {
+                    type: "button",
+                    sub_type: "quick_reply",
+                    index: 0,
+                    parameters: [{ type: "payload", payload: "OPT_1" }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    });
+  });
+
   it("marks a message as read via status payload", async () => {
     const { fetchMock, responses } = setupFetch({ success: true });
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
