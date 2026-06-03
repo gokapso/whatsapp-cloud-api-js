@@ -28,6 +28,7 @@ import {
   CallPermissionInteractiveInput,
   RawInteractiveInput,
   CtaUrlInteractiveInput,
+  CarouselInteractiveInput,
   CatalogMessageInput
 } from "./interactive";
 
@@ -169,6 +170,10 @@ export class MessagesResource {
     return this.interactiveSender.sendCtaUrl(input);
   }
 
+  async sendInteractiveCarousel(input: CarouselInteractiveInput): Promise<SendMessageResponse> {
+    return this.interactiveSender.sendCarousel(input);
+  }
+
   async sendInteractiveCatalogMessage(input: CatalogMessageInput): Promise<SendMessageResponse> {
     return this.interactiveSender.sendCatalogMessage(input);
   }
@@ -241,3 +246,5 @@ export class MessagesResource {
     return this.query({ phoneNumberId, conversationId, limit, after, before, fields });
   }
 }
+
+export type { CarouselInteractiveInput } from "./interactive";

@@ -229,6 +229,29 @@ await client.messages.sendInteractiveCtaUrl({
 });
 ```
 
+### Interactive Carousel
+```ts
+await client.messages.sendInteractiveCarousel({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  bodyText: "Choose an option",
+  cards: [
+    {
+      cardIndex: 0,
+      header: { type: "image", image: { link: "https://example.com/one.jpg" } },
+      bodyText: "First card",
+      action: { type: "cta_url", displayText: "View", url: "https://example.com/one" }
+    },
+    {
+      cardIndex: 1,
+      header: { type: "image", image: { link: "https://example.com/two.jpg" } },
+      bodyText: "Second card",
+      action: { displayText: "View", url: "https://example.com/two" }
+    }
+  ]
+});
+```
+
 ### Catalog Message
 ```ts
 await client.messages.sendInteractiveCatalogMessage({

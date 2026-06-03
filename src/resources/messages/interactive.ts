@@ -5,6 +5,8 @@ const MAX_BODY_CHARS = 1024;
 const MAX_FOOTER_CHARS = 60;
 const MAX_BUTTON_LABEL = 20;
 const MAX_SECTION_TITLE = 24;
+const MAX_CAROUSEL_CARD_BODY_CHARS = 160;
+const MAX_CAROUSEL_CARD_BODY_LINE_BREAKS = 2;
 
 function parseInput<T>(schema: z.ZodSchema<T>, input: unknown, context: string): T {
   const result = schema.safeParse(input);
@@ -203,6 +205,76 @@ const ctaUrlMessageSchema = baseMessageSchema.extend({
   parameters: ctaUrlParametersSchema
 });
 
+const carouselCardBodyTextSchema = z
+  .string()
+  .max(MAX_CAROUSEL_CARD_BODY_CHARS)
+  .refine((value) => (value.match(/\r\n|\r|\n/g) ?? []).length <= MAX_CAROUSEL_CARD_BODY_LINE_BREAKS, {
+    message: `Must include at most ${MAX_CAROUSEL_CARD_BODY_LINE_BREAKS} line breaks`
+  });
+
+const carouselHeaderSchema = z.union([imageHeaderSchema, videoHeaderSchema]);
+
+const carouselCtaActionSchema = z.object({
+  type: z.literal("cta_url").optional(),
+  displayText: z.string().min(1).max(MAX_BUTTON_LABEL),
+  url: z.string().url()
+});
+
+const carouselQuickReplyActionSchema = z.object({
+  buttons: z.array(buttonOptionSchema).min(1)
+});
+
+const carouselCardSchema = z.object({
+  cardIndex: z.number().int().min(0),
+  header: carouselHeaderSchema,
+  bodyText: carouselCardBodyTextSchema.optional(),
+  action: z.union([carouselCtaActionSchema, carouselQuickReplyActionSchema])
+});
+
+const carouselMessageSchema = baseMessageSchema.extend({
+  bodyText: z.string().min(1).max(MAX_BODY_CHARS),
+  cards: z.array(carouselCardSchema).min(2).max(10)
+}).superRefine((value, ctx) => {
+  const expectedIndexes = value.cards.map((_, index) => index);
+  const actualIndexes = value.cards.map((card) => card.cardIndex).sort((left, right) => left - right);
+  if (actualIndexes.some((cardIndex, index) => cardIndex !== expectedIndexes[index])) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["cards"],
+      message: "cardIndex values must be sequential from 0"
+    });
+  }
+
+  const firstAction = value.cards[0]?.action;
+  const firstSignature = firstAction && "url" in firstAction
+    ? "cta_url"
+    : `quick_reply:${firstAction && "buttons" in firstAction ? firstAction.buttons.length : 0}`;
+  const quickReplyIds: string[] = [];
+
+  value.cards.forEach((card, index) => {
+    const signature = "url" in card.action ? "cta_url" : `quick_reply:${card.action.buttons.length}`;
+    if (signature !== firstSignature) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cards", index, "action"],
+        message: "All carousel cards must use the same button structure"
+      });
+    }
+
+    if ("buttons" in card.action) {
+      quickReplyIds.push(...card.action.buttons.map((button) => button.id));
+    }
+  });
+
+  if (new Set(quickReplyIds).size !== quickReplyIds.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["cards"],
+      message: "quick reply button ids must be unique across carousel cards"
+    });
+  }
+});
+
 // Catalog message schema
 const catalogMessageSchema = baseMessageSchema.extend({
   bodyText: z.string().min(1).max(MAX_BODY_CHARS).optional(),
@@ -212,6 +284,7 @@ const catalogMessageSchema = baseMessageSchema.extend({
 });
 
 export type CtaUrlInteractiveInput = z.infer<typeof ctaUrlMessageSchema>;
+export type CarouselInteractiveInput = z.infer<typeof carouselMessageSchema>;
 export type CatalogMessageInput = z.infer<typeof catalogMessageSchema>;
 
 export class InteractiveMessageSender {
@@ -497,13 +570,65 @@ export class InteractiveMessageSender {
     };
 
     if (bodyText) {
-      (interactive as any).body = { text: bodyText };
+      interactive.body = { text: bodyText };
     }
 
     const footer = buildFooter(footerText);
     if (footer) {
       Object.assign(interactive, { footer });
     }
+
+    const payload = buildBasePayload(
+      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { type: "interactive", interactive }
+    );
+
+    return this.client.sendMessageRequest(phoneNumberId, payload);
+  }
+
+  async sendCarousel(input: CarouselInteractiveInput) {
+    const parsed = parseInput(carouselMessageSchema, input, "Carousel interactive message");
+    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, cards } = parsed;
+
+    const interactive = {
+      type: "carousel" as const,
+      body: { text: bodyText },
+      action: {
+        cards: cards.map((card) => {
+          const cardPayload: Record<string, unknown> = {
+            cardIndex: card.cardIndex,
+            type: "cta_url",
+            header: card.header
+          };
+
+          if (card.bodyText) {
+            cardPayload.body = { text: card.bodyText };
+          }
+
+          if ("url" in card.action) {
+            cardPayload.action = {
+              name: "cta_url",
+              parameters: {
+                displayText: card.action.displayText,
+                url: card.action.url
+              }
+            };
+          } else {
+            cardPayload.action = {
+              buttons: card.action.buttons.map((button) => ({
+                type: "quick_reply",
+                quickReply: {
+                  id: button.id,
+                  title: button.title
+                }
+              }))
+            };
+          }
+
+          return cardPayload;
+        })
+      }
+    };
 
     const payload = buildBasePayload(
       { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
@@ -574,7 +699,7 @@ export class InteractiveMessageSender {
     };
 
     if (bodyText) {
-      (interactive as any).body = { text: bodyText };
+      interactive.body = { text: bodyText };
     }
 
     const payload = buildBasePayload(

@@ -33,4 +33,8 @@ export {
   buildKapsoMessageFields
 } from "./kapso";
 export { buildTemplatePayload } from "./resources/templates/raw";
-export type { CtaUrlInteractiveInput, CatalogMessageInput } from "./resources/messages/interactive";
+export type {
+  CtaUrlInteractiveInput,
+  CarouselInteractiveInput,
+  CatalogMessageInput
+} from "./resources/messages/interactive";
