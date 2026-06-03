@@ -1,5 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { WhatsAppClient } from "../src";
+import type { CarouselInteractiveInput } from "../src";
+import type { FlowInteractiveInput } from "../src/resources/messages/interactive";
 
 const defaultGraphResponse = {
   messaging_product: "whatsapp",
@@ -370,7 +372,7 @@ describe("Messages resource", () => {
         parameters: {
           // flowCta missing on purpose
           flowId: "FLOW123"
-        } as any
+        } as unknown as FlowInteractiveInput["parameters"]
       })
     ).rejects.toThrow(/flowCta/);
   });
@@ -607,6 +609,121 @@ describe("Messages resource", () => {
         ]
       }
     });
+  });
+
+  it("sends an interactive carousel with URL buttons", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    const input: CarouselInteractiveInput = {
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Choose an option",
+      cards: [
+        {
+          cardIndex: 0,
+          header: { type: "image", image: { link: "https://example.com/one.jpg" } },
+          bodyText: "First card",
+          action: { type: "cta_url", displayText: "View", url: "https://example.com/one" }
+        },
+        {
+          cardIndex: 1,
+          header: { type: "video", video: { link: "https://example.com/two.mp4" } },
+          bodyText: "Second card",
+          action: { displayText: "View", url: "https://example.com/two" }
+        }
+      ]
+    };
+
+    await client.messages.sendInteractiveCarousel(input);
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      type: "interactive",
+      interactive: {
+        type: "carousel",
+        body: { text: "Choose an option" }
+      }
+    });
+    expect(parsedBody.interactive.action.cards[0]).toMatchObject({
+      card_index: 0,
+      type: "cta_url",
+      header: { type: "image", image: { link: "https://example.com/one.jpg" } },
+      body: { text: "First card" },
+      action: {
+        name: "cta_url",
+        parameters: { display_text: "View", url: "https://example.com/one" }
+      }
+    });
+    expect(parsedBody.interactive.action.cards[1]).toMatchObject({
+      header: { type: "video", video: { link: "https://example.com/two.mp4" } },
+      action: { parameters: { url: "https://example.com/two" } }
+    });
+    expectTypeOf(input).toMatchTypeOf<CarouselInteractiveInput>();
+  });
+
+  it("sends an interactive carousel with quick replies", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveCarousel({
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Choose an option",
+      cards: [
+        {
+          cardIndex: 0,
+          header: { type: "image", image: { link: "https://example.com/one.jpg" } },
+          action: {
+            buttons: [
+              { id: "first_yes", title: "Yes" },
+              { id: "first_no", title: "No" }
+            ]
+          }
+        },
+        {
+          cardIndex: 1,
+          header: { type: "image", image: { link: "https://example.com/two.jpg" } },
+          action: {
+            buttons: [
+              { id: "second_yes", title: "Yes" },
+              { id: "second_no", title: "No" }
+            ]
+          }
+        }
+      ]
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody.interactive.action.cards[0].action.buttons).toEqual([
+      { type: "quick_reply", quick_reply: { id: "first_yes", title: "Yes" } },
+      { type: "quick_reply", quick_reply: { id: "first_no", title: "No" } }
+    ]);
+  });
+
+  it("fails validation for malformed interactive carousels", async () => {
+    const { fetchMock } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await expect(
+      client.messages.sendInteractiveCarousel({
+        phoneNumberId: "123",
+        to: "15551234567",
+        bodyText: "Choose an option",
+        cards: [
+          {
+            cardIndex: 1,
+            header: { type: "image", image: { link: "https://example.com/one.jpg" } },
+            action: { displayText: "View", url: "https://example.com/one" }
+          },
+          {
+            cardIndex: 2,
+            header: { type: "image", image: { link: "https://example.com/two.jpg" } },
+            action: { buttons: [{ id: "second_yes", title: "Yes" }] }
+          }
+        ]
+      })
+    ).rejects.toThrowError(/cardIndex values must be sequential|same button structure/);
   });
 
   it("marks a message as read via status payload", async () => {
