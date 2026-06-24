@@ -82,7 +82,10 @@ const settingsUpdateSchema = z
   })
   .passthrough();
 
-const businessProfileGetSchema = z.object({ phoneNumberId: z.string().min(1) });
+const businessProfileGetSchema = z.object({
+  phoneNumberId: z.string().min(1),
+  fields: z.string().optional()
+});
 
 const businessProfileUpdateSchema = z
   .object({
@@ -157,8 +160,9 @@ export class PhoneNumbersResource {
 
   readonly businessProfile = {
     get: async (input: z.infer<typeof businessProfileGetSchema>): Promise<BusinessProfileGetResponse> => {
-      const parsed = businessProfileGetSchema.parse(input);
-      return this.client.request<BusinessProfileGetResponse>("GET", `${parsed.phoneNumberId}/whatsapp_business_profile`, {
+      const { phoneNumberId, fields } = businessProfileGetSchema.parse(input);
+      return this.client.request<BusinessProfileGetResponse>("GET", `${phoneNumberId}/whatsapp_business_profile`, {
+        query: fields === undefined ? undefined : { fields },
         responseType: "json"
       });
     },

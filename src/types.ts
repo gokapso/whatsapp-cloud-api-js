@@ -269,6 +269,9 @@ export interface PhoneNumberSettingsResponse {
 
 /** A single business profile entry returned by GET /whatsapp_business_profile. */
 export interface BusinessProfileEntry {
+  id?: string;
+  messagingProduct?: "whatsapp" | string;
+  accountName?: string;
   about?: string;
   address?: string;
   description?: string;

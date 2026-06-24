@@ -154,6 +154,18 @@ describe("Phone Numbers API", () => {
     expectTypeOf(result).toMatchTypeOf<{ data: Array<Record<string, unknown>> }>();
   });
 
+  it("businessProfile.get passes requested fields", async () => {
+    const { fetchMock, calls } = setupFetch({ data: [{ about: "ABOUT" }] });
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const fields = "about,address,description,email,websites,vertical,profile_picture_url,messaging_product,account_name,id";
+
+    await client.phoneNumbers.businessProfile.get({ phoneNumberId: "123", fields });
+
+    const url = new URL(calls[0]?.url ?? "");
+    expect(url.pathname).toBe("/v23.0/123/whatsapp_business_profile");
+    expect(url.searchParams.get("fields")).toBe(fields);
+  });
+
   it("businessProfile.update posts messaging_product plus fields", async () => {
     const { fetchMock, calls } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
