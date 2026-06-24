@@ -21,7 +21,7 @@ const templateMessageSchema = baseMessageSchema.extend({
   template: templateSchema
 });
 
-export type TemplateMessageInput = z.infer<typeof templateMessageSchema>;
+export type TemplateMessageInput = z.input<typeof templateMessageSchema>;
 
 export class TemplateMessageSender {
   constructor(private readonly client: MessageSendClient) {}

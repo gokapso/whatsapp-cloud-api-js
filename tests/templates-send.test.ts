@@ -1,6 +1,5 @@
-import { describe, expect, it, expectTypeOf } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildTemplateSendPayload } from "../src/resources/templates/send";
-import type { TemplateMessageInput } from "../src/resources/messages/template";
 import type { TemplateSendInput } from "../src/resources/templates/send";
 import type { TemplateComponent } from "../src/resources/templates/types";
 
@@ -354,7 +353,11 @@ describe("Template send payload builder", () => {
     });
 
     const components = expectComponents(template);
-    expect(components[0].parameters).toHaveLength(2);
+    const body = components[0];
+    if (body?.type !== "body") {
+      throw new Error(`Expected body component, received ${body?.type}`);
+    }
+    expect(body.parameters).toHaveLength(2);
   });
 
   it("throws when currency amount is not an integer", () => {
@@ -498,19 +501,19 @@ describe("Template send payload builder", () => {
     );
 
     const urlButton = components.find(
-      (component) => component.type === "button" && (component as any).subType === "url"
+      (component) => component.type === "button" && component.subType === "url"
     );
     expect(urlButton).toBeDefined();
-    if (!urlButton || urlButton.type !== "button") {
+    if (!urlButton || urlButton.type !== "button" || urlButton.subType !== "url") {
       throw new Error("Expected url button component");
     }
     expect(urlButton.parameters).toEqual([expect.objectContaining({ parameterName: "code" })]);
 
     const quickReplyButton = components.find(
-      (component) => component.type === "button" && (component as any).subType === "quick_reply"
+      (component) => component.type === "button" && component.subType === "quick_reply"
     );
     expect(quickReplyButton).toBeDefined();
-    if (!quickReplyButton || quickReplyButton.type !== "button") {
+    if (!quickReplyButton || quickReplyButton.type !== "button" || quickReplyButton.subType !== "quick_reply") {
       throw new Error("Expected quick reply button component");
     }
     expect(quickReplyButton.parameters).toEqual([expect.objectContaining({ parameterName: "reply" })]);

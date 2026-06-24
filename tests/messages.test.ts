@@ -532,6 +532,47 @@ describe("Messages resource", () => {
     });
   });
 
+  it("accepts a raw template variable for sendTemplate", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const template = {
+      name: "expense_submission_invitation",
+      language: { code: "es" },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", parameter_name: "nombre", text: "Joaquin" },
+            { type: "text", parameter_name: "empresa", text: "Buk" }
+          ]
+        }
+      ]
+    };
+
+    await client.messages.sendTemplate({
+      phoneNumberId: "123",
+      to: "15551234567",
+      template
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      type: "template",
+      template: {
+        name: "expense_submission_invitation",
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", parameter_name: "nombre", text: "Joaquin" },
+              { type: "text", parameter_name: "empresa", text: "Buk" }
+            ]
+          }
+        ]
+      }
+    });
+  });
+
   it("sends a carousel template message with nested card components", async () => {
     const { fetchMock, responses } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
