@@ -360,6 +360,43 @@ describe("Messages resource", () => {
     expect(params.flow_action).toBe("navigate");
   });
 
+  it("sends a draft flow interactive message", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveFlow({
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Test draft flow",
+      parameters: {
+        flowId: "FLOW123",
+        flowCta: "Open",
+        mode: "draft"
+      }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody.interactive?.action?.parameters?.mode).toBe("draft");
+  });
+
+  it("rejects an invalid flow mode", async () => {
+    const { fetchMock } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await expect(
+      client.messages.sendInteractiveFlow({
+        phoneNumberId: "123",
+        to: "15551234567",
+        bodyText: "Start flow",
+        parameters: {
+          flowId: "FLOW123",
+          flowCta: "Open",
+          mode: "invalid"
+        } as unknown as FlowInteractiveInput["parameters"]
+      })
+    ).rejects.toThrow(/mode/);
+  });
+
   it("throws friendly error when flow CTA missing", async () => {
     const { fetchMock } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });

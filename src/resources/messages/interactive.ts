@@ -148,6 +148,7 @@ const callPermissionMessageSchema = baseMessageSchema.extend({
 const flowParametersSchema = z.object({
   flowId: z.string().min(1),
   flowCta: z.string().min(1).max(MAX_BUTTON_LABEL),
+  mode: z.enum(["draft", "published"]).optional(),
   flowMessageVersion: z.string().min(1).optional(),
   flowToken: z.string().optional(),
   flowAction: z.enum(["navigate", "data_exchange"]).optional(),
@@ -471,6 +472,7 @@ export class InteractiveMessageSender {
           flowCta: parameters.flowCta,
           flowId: parameters.flowId,
           flowMessageVersion: parameters.flowMessageVersion ?? "3",
+          ...(parameters.mode ? { mode: parameters.mode } : {}),
           ...(parameters.flowToken ? { flowToken: parameters.flowToken } : {}),
           ...(parameters.flowAction ? { flowAction: parameters.flowAction } : {}),
           ...(parameters.flowActionPayload ? { flowActionPayload: parameters.flowActionPayload } : {})
