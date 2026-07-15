@@ -80,7 +80,7 @@ console.log("Validation errors:", result.validationErrors);
 
 ## 3. Send Flow messages
 
-Use `client.messages.sendInteractiveFlow` (typed with `FlowInteractiveInput`) to trigger your flow. `flowCta` is required; `flowMessageVersion` defaults to `"3"` when omitted.
+Use `client.messages.sendInteractiveFlow` (typed with `FlowInteractiveInput`) to trigger your flow. `flowCta` is required; `flowMessageVersion` defaults to `"3"` when omitted. Meta treats an omitted `mode` as `"published"`, so pass `mode: "draft"` when testing an unpublished Flow.
 
 ```ts
 import { WhatsAppClient, type FlowInteractiveInput } from "@kapso/whatsapp-cloud-api";
@@ -94,6 +94,7 @@ const message: FlowInteractiveInput = {
   parameters: {
     flowId: "1234567890",
     flowCta: "Open",
+    mode: "draft",
     flowToken: "token123",
     flowAction: "navigate",
     flowActionPayload: { screen: "WELCOME" }

@@ -314,6 +314,7 @@ await client.messages.sendInteractiveFlow({
   parameters: {
     flowId: "1234567890",
     flowCta: "Open",
+    mode: "draft", // required when sending an unpublished Flow
     flowToken: "token123",
     flowAction: "navigate",
     flowActionPayload: { screen: "WELCOME" }
@@ -321,7 +322,7 @@ await client.messages.sendInteractiveFlow({
 });
 ```
 
-> `flowCta` is required by Meta. `flowMessageVersion` defaults to `"3"` when omitted.
+> `flowCta` is required by Meta. `flowMessageVersion` defaults to `"3"` when omitted. Meta treats an omitted `mode` as `"published"`; use `mode: "draft"` for an unpublished Flow.
 
 For a full walkthrough (authoring guidance, deployment scripts, Express/Edge examples, and manual testing tips) see [docs/flows.md](./docs/flows.md).
 
