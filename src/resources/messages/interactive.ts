@@ -176,14 +176,13 @@ export type FlowInteractiveInput = FlowMessageInput;
 export type AddressInteractiveInput = z.infer<typeof addressMessageSchema> & RecipientAddress;
 export type LocationRequestInteractiveInput = z.infer<typeof locationRequestMessageSchema> & RecipientAddress;
 export type CallPermissionInteractiveInput = z.infer<typeof callPermissionMessageSchema> & RecipientAddress;
-export interface RawInteractiveInput {
+export type RawInteractiveInput = {
   phoneNumberId: string;
-  to: string;
   recipientType?: "individual" | "group";
   contextMessageId?: string;
   bizOpaqueCallbackData?: string;
   interactive: Record<string, unknown>;
-}
+} & RecipientAddress;
 
 function buildHeader(header?: Record<string, unknown>) {
   return header ? { ...header } : undefined;
@@ -304,7 +303,7 @@ export class InteractiveMessageSender {
 
   async sendButtons(input: ButtonMessageInput) {
     const parsed = parseInput(buttonMessageSchema, input, "Button interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, buttons } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, buttons } = parsed;
 
     const interactive = {
       type: "button" as const,
@@ -327,7 +326,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -336,7 +335,7 @@ export class InteractiveMessageSender {
 
   async sendList(input: ListMessageInput) {
     const parsed = parseInput(listMessageSchema, input, "List interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, buttonText, sections, header, footerText } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, buttonText, sections, header, footerText } = parsed;
 
     const interactive = {
       type: "list" as const,
@@ -367,7 +366,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -376,7 +375,7 @@ export class InteractiveMessageSender {
 
   async sendProduct(input: ProductMessageInput) {
     const parsed = parseInput(productMessageSchema, input, "Product interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, productRetailerId } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, productRetailerId } = parsed;
 
     // Per Meta: product messages cannot include a header
     if (header) {
@@ -404,7 +403,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -413,7 +412,7 @@ export class InteractiveMessageSender {
 
   async sendProductList(input: ProductListMessageInput) {
     const parsed = parseInput(productListMessageSchema, input, "Product list interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, sections } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, catalogId, sections } = parsed;
 
     // Per Meta: product_list requires a text header
     if (!header) {
@@ -452,7 +451,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -461,7 +460,7 @@ export class InteractiveMessageSender {
 
   async sendFlow(input: FlowMessageInput) {
     const parsed = parseInput(flowMessageSchema, input, "Flow interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, parameters } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
       type: "flow",
@@ -490,7 +489,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -499,7 +498,7 @@ export class InteractiveMessageSender {
 
   async sendAddress(input: AddressInteractiveInput) {
     const parsed = parseInput(addressMessageSchema, input, "Address interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
       type: "address_message",
@@ -521,7 +520,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -530,7 +529,7 @@ export class InteractiveMessageSender {
 
   async sendLocationRequest(input: LocationRequestInteractiveInput) {
     const parsed = parseInput(locationRequestMessageSchema, input, "Location request interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
       type: "location_request_message",
@@ -549,7 +548,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -558,7 +557,7 @@ export class InteractiveMessageSender {
 
   async sendCallPermissionRequest(input: CallPermissionInteractiveInput) {
     const parsed = parseInput(callPermissionMessageSchema, input, "Call permission interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
       type: "call_permission_request",
@@ -581,7 +580,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -590,7 +589,7 @@ export class InteractiveMessageSender {
 
   async sendCarousel(input: CarouselInteractiveInput) {
     const parsed = parseInput(carouselMessageSchema, input, "Carousel interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, cards } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, cards } = parsed;
 
     const interactive = {
       type: "carousel" as const,
@@ -633,7 +632,7 @@ export class InteractiveMessageSender {
     };
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -641,9 +640,9 @@ export class InteractiveMessageSender {
   }
 
   async sendRaw(input: RawInteractiveInput) {
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, interactive } = input;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, interactive } = input;
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
     return this.client.sendMessageRequest(phoneNumberId, payload);
@@ -652,7 +651,7 @@ export class InteractiveMessageSender {
   // CTA URL: header may be text or media; body required; footer optional
   async sendCtaUrl(input: z.infer<typeof ctaUrlMessageSchema>) {
     const parsed = parseInput(ctaUrlMessageSchema, input, "CTA URL interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, parameters } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, header, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
       type: "cta_url",
@@ -676,7 +675,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 
@@ -686,7 +685,7 @@ export class InteractiveMessageSender {
   // Catalog message: optional body text; action.name = catalog_message
   async sendCatalogMessage(input: z.infer<typeof catalogMessageSchema>) {
     const parsed = parseInput(catalogMessageSchema, input, "Catalog interactive message");
-    const { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, parameters } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, parameters } = parsed;
 
     const interactive: Record<string, unknown> = {
       type: "catalog_message",
@@ -705,7 +704,7 @@ export class InteractiveMessageSender {
     }
 
     const payload = buildBasePayload(
-      { phoneNumberId, to, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
       { type: "interactive", interactive }
     );
 

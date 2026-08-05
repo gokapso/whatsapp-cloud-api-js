@@ -903,6 +903,40 @@ describe("BSUID recipients", () => {
     });
   });
 
+  it("sends an interactive message addressed by BSUID only", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveButtons({
+      phoneNumberId: "123",
+      recipient: "US.13491208655302741918",
+      bodyText: "Pick one",
+      buttons: [{ id: "a", title: "Option A" }]
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      recipient: "US.13491208655302741918",
+      type: "interactive"
+    });
+    expect(parsedBody).not.toHaveProperty("to");
+  });
+
+  it("sends a raw interactive message addressed by BSUID only", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveRaw({
+      phoneNumberId: "123",
+      recipient: "US.13491208655302741918",
+      interactive: { type: "button", body: { text: "Pick" }, action: { buttons: [] } }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({ recipient: "US.13491208655302741918" });
+    expect(parsedBody).not.toHaveProperty("to");
+  });
+
   it("rejects a send with neither to nor recipient", async () => {
     const { fetchMock } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
