@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const MAX_BODY_CHARS = 1024;
 const MAX_FOOTER_CHARS = 60;
@@ -162,20 +162,20 @@ const flowMessageSchema = baseMessageSchema.extend({
   parameters: flowParametersSchema
 });
 
-type ButtonMessageInput = z.infer<typeof buttonMessageSchema>;
-type ListMessageInput = z.infer<typeof listMessageSchema>;
-type ProductMessageInput = z.infer<typeof productMessageSchema>;
-type ProductListMessageInput = z.infer<typeof productListMessageSchema>;
-type FlowMessageInput = z.infer<typeof flowMessageSchema>;
+type ButtonMessageInput = z.infer<typeof buttonMessageSchema> & RecipientAddress;
+type ListMessageInput = z.infer<typeof listMessageSchema> & RecipientAddress;
+type ProductMessageInput = z.infer<typeof productMessageSchema> & RecipientAddress;
+type ProductListMessageInput = z.infer<typeof productListMessageSchema> & RecipientAddress;
+type FlowMessageInput = z.infer<typeof flowMessageSchema> & RecipientAddress;
 
 export type ButtonInteractiveInput = ButtonMessageInput;
 export type ListInteractiveInput = ListMessageInput;
 export type ProductInteractiveInput = ProductMessageInput;
 export type ProductListInteractiveInput = ProductListMessageInput;
 export type FlowInteractiveInput = FlowMessageInput;
-export type AddressInteractiveInput = z.infer<typeof addressMessageSchema>;
-export type LocationRequestInteractiveInput = z.infer<typeof locationRequestMessageSchema>;
-export type CallPermissionInteractiveInput = z.infer<typeof callPermissionMessageSchema>;
+export type AddressInteractiveInput = z.infer<typeof addressMessageSchema> & RecipientAddress;
+export type LocationRequestInteractiveInput = z.infer<typeof locationRequestMessageSchema> & RecipientAddress;
+export type CallPermissionInteractiveInput = z.infer<typeof callPermissionMessageSchema> & RecipientAddress;
 export interface RawInteractiveInput {
   phoneNumberId: string;
   to: string;
@@ -284,9 +284,9 @@ const catalogMessageSchema = baseMessageSchema.extend({
     .default({})
 });
 
-export type CtaUrlInteractiveInput = z.infer<typeof ctaUrlMessageSchema>;
-export type CarouselInteractiveInput = z.infer<typeof carouselMessageSchema>;
-export type CatalogMessageInput = z.infer<typeof catalogMessageSchema>;
+export type CtaUrlInteractiveInput = z.infer<typeof ctaUrlMessageSchema> & RecipientAddress;
+export type CarouselInteractiveInput = z.infer<typeof carouselMessageSchema> & RecipientAddress;
+export type CatalogMessageInput = z.infer<typeof catalogMessageSchema> & RecipientAddress;
 
 export class InteractiveMessageSender {
   constructor(private readonly client: MessageSendClient) {}

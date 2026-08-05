@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RecipientAddress } from "./messages/base";
 import type { WhatsAppClient } from "../client";
 import { assertKapsoProxy } from "./shared";
 import type {
@@ -69,7 +70,7 @@ const getCallSchema = z.object({
 export class CallsResource {
   constructor(private readonly client: WhatsAppClient) {}
 
-  async connect(input: z.infer<typeof connectSchema>): Promise<CallConnectResponse> {
+  async connect(input: z.infer<typeof connectSchema> & RecipientAddress): Promise<CallConnectResponse> {
     const { phoneNumberId, to, recipient, session, bizOpaqueCallbackData } =
       connectSchema.parse(input);
 

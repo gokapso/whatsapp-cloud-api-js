@@ -20,6 +20,14 @@ export const baseMessageSchema = z.object({
 
 export type BaseMessageFields = z.infer<typeof baseMessageSchema>;
 
+/**
+ * At least one of to / recipient, enforced at the type level. The runtime
+ * guard in buildBasePayload backs it for untyped callers.
+ */
+export type RecipientAddress =
+  | { to: string; recipient?: string }
+  | { to?: string; recipient: string };
+
 export interface MessageSendClient {
   sendMessageRequest(phoneNumberId: string, payload: Record<string, unknown>): Promise<SendMessageResponse>;
 }

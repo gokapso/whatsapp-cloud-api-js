@@ -79,7 +79,8 @@ describe("Calls API", () => {
     const { fetchMock } = setupFetch();
     const client = new WhatsAppClient({ kapsoApiKey: "key", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
 
-    await expect(client.calls.connect({ phoneNumberId: "123" })).rejects.toThrow(
+    // No longer compiles without a cast: RecipientAddress requires one of the two.
+    await expect(client.calls.connect({ phoneNumberId: "123" } as never)).rejects.toThrow(
       /to \(a phone number\), recipient \(a business-scoped user ID\)/
     );
   });

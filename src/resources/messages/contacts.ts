@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const addressSchema = z.object({
   street: z.string().optional(),
@@ -56,7 +56,7 @@ const contactsMessageSchema = baseMessageSchema.extend({
   contacts: z.array(contactSchema).min(1, "At least one contact is required")
 });
 
-export type ContactsMessageInput = z.infer<typeof contactsMessageSchema>;
+export type ContactsMessageInput = z.infer<typeof contactsMessageSchema> & RecipientAddress;
 
 export class ContactsMessageSender {
   constructor(private readonly client: MessageSendClient) {}

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const reactionSchema = z.object({
   messageId: z.string().min(1, "messageId is required"),
@@ -10,7 +10,7 @@ const reactionMessageSchema = baseMessageSchema.extend({
   reaction: reactionSchema
 });
 
-export type ReactionMessageInput = z.infer<typeof reactionMessageSchema>;
+export type ReactionMessageInput = z.infer<typeof reactionMessageSchema> & RecipientAddress;
 
 export class ReactionMessageSender {
   constructor(private readonly client: MessageSendClient) {}

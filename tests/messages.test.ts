@@ -907,8 +907,11 @@ describe("BSUID recipients", () => {
     const { fetchMock } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
 
+    // No longer compiles without a cast: RecipientAddress requires one of the two.
+    const invalidInput = { phoneNumberId: "123", body: "Hello" } as never;
+
     await expect(
-      client.messages.sendText({ phoneNumberId: "123", body: "Hello" })
+      client.messages.sendText(invalidInput)
     ).rejects.toThrow(/to \(a phone number\), recipient \(a business-scoped user ID\)/);
   });
 });

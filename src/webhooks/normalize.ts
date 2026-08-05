@@ -17,6 +17,20 @@ export interface MessageStatusUpdate {
   [key: string]: unknown;
 }
 
+/**
+ * A webhook contact entry, camelized. Either waId or userId can be absent:
+ * a contact can arrive identified only by its business-scoped user ID.
+ */
+export interface NormalizedWebhookContact {
+  waId?: string;
+  /** Business-scoped user ID (BSUID). */
+  userId?: string;
+  /** Parent BSUID; only for businesses enrolled in parent BSUIDs. */
+  parentUserId?: string;
+  profile?: { name?: string; username?: string; [key: string]: unknown };
+  [key: string]: unknown;
+}
+
 export interface NormalizedCallEvent {
   event?: string;
   callId?: string;
@@ -24,6 +38,12 @@ export interface NormalizedCallEvent {
   status?: string;
   from?: string;
   to?: string;
+  /** Caller business-scoped user ID (BSUID). */
+  fromUserId?: string;
+  fromParentUserId?: string;
+  /** Callee business-scoped user ID (BSUID). */
+  toUserId?: string;
+  toParentUserId?: string;
   startTime?: number;
   endTime?: number;
   duration?: number;
@@ -34,7 +54,7 @@ export interface NormalizedWebhookResult {
   object?: string;
   phoneNumberId?: string;
   displayPhoneNumber?: string;
-  contacts: Array<Record<string, unknown>>;
+  contacts: NormalizedWebhookContact[];
   messages: UnifiedMessage[];
   statuses: MessageStatusUpdate[];
   calls: NormalizedCallEvent[];
@@ -104,7 +124,7 @@ export function normalizeWebhook(payload: unknown): NormalizedWebhookResult {
       const contacts = Array.isArray(value.contacts) ? value.contacts : [];
       if (contacts.length > 0) {
         for (const contact of contacts) {
-          result.contacts.push(toCamelCaseDeep(contact));
+          result.contacts.push(toCamelCaseDeep(contact) as NormalizedWebhookContact);
         }
       }
 

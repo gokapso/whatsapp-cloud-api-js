@@ -217,7 +217,8 @@ export type MessageListResponse = PagedResponse<UnifiedMessage>;
 
 export interface ContactRecord {
   id: string;
-  waId: string;
+  /** Phone number. Can be null for contacts known only by their BSUID. */
+  waId?: string | null;
   profileName?: string;
   displayName?: string;
   whatsappUserId?: string;
