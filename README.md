@@ -504,11 +504,15 @@ const message = await client.messages.get({
 
 // Contacts
 const contacts = await client.contacts.list({ phoneNumberId: "647015955153740", customerId: "123", });
-await client.contacts.update({
-  phoneNumberId: "647015955153740",
-  waId: contacts.data[0].waId,
-  metadata: { tags: ["vip"], source: "import" },
-});
+// waId can be absent: contacts identified only by their BSUID exist.
+const waId = contacts.data[0].waId;
+if (waId) {
+  await client.contacts.update({
+    phoneNumberId: "647015955153740",
+    waId,
+    metadata: { tags: ["vip"], source: "import" },
+  });
+}
 
 // Call logs
 const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", limit: 20, });
