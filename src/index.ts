@@ -24,6 +24,7 @@ export type {
   TemplateBodyComponent,
   TemplateButtonComponent
 } from "./resources/templates/types";
+export { BSUID_PATTERN, isBusinessScopedUserId } from "./utils/bsuid";
 export { GraphApiError, KapsoProxyRequiredError } from "./errors";
 export type { ErrorCategory, RetryHint, RetryAction } from "./errors";
 export * from "./types";

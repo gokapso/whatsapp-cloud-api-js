@@ -4,7 +4,15 @@ import type { SendMessageResponse } from "../../types";
 
 export const baseMessageSchema = z.object({
   phoneNumberId: z.string().min(1, "phoneNumberId is required"),
-  to: z.string().min(1, "to is required"),
+  /** Recipient phone number. Optional since BSUIDs; provide this, recipient, or both. */
+  to: z.string().min(1, "to must not be empty").optional(),
+  /**
+   * Recipient business-scoped user ID (BSUID), including the parent ENT
+   * variant. When both to and recipient are present, Meta delivers to the
+   * phone number and ignores the BSUID. Sending both is the recommended
+   * default when you have both identifiers.
+   */
+  recipient: z.string().min(1, "recipient must not be empty").optional(),
   recipientType: z.enum(["individual", "group"]).optional(),
   contextMessageId: z.string().min(1).optional(),
   bizOpaqueCallbackData: z.string().max(512).optional()
@@ -35,10 +43,17 @@ export function buildBasePayload(
   input: BaseMessageFields,
   rest: Record<string, unknown>
 ): Record<string, unknown> {
+  if (!input.to && !input.recipient) {
+    throw new Error(
+      "Provide to (a phone number), recipient (a business-scoped user ID), or both."
+    );
+  }
+
   const payload: Record<string, unknown> = {
     messagingProduct: "whatsapp",
     recipientType: input.recipientType ?? "individual",
-    to: input.to,
+    ...(input.to !== undefined ? { to: input.to } : {}),
+    ...(input.recipient !== undefined ? { recipient: input.recipient } : {}),
     ...rest
   };
 

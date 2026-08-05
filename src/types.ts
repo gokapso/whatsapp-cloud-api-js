@@ -7,7 +7,10 @@ export type MessageStatus = "accepted" | "held_for_quality_assessment";
  */
 export interface MessageContact {
   input: string;
-  waId: string;
+  /** Present when the send was addressed by phone number. */
+  waId?: string;
+  /** Business-scoped user ID; present when the send was addressed by BSUID. */
+  userId?: string;
 }
 
 /**
@@ -176,8 +179,21 @@ export interface MetaMessage {
   id: string;
   type: string;
   timestamp: string;
+  /**
+   * Sender phone number. Omitted when the user adopted a username and the
+   * conditions for phone number visibility no longer hold; fromUserId is the
+   * identifier that always arrives.
+   */
   from?: string;
   to?: string;
+  /** Sender business-scoped user ID (BSUID). Arrives on every inbound message. */
+  fromUserId?: string;
+  /** Sender parent BSUID; only for businesses enrolled in parent BSUIDs. */
+  fromParentUserId?: string;
+  /** Recipient BSUID on outbound messages. */
+  toUserId?: string;
+  /** Recipient parent BSUID on outbound messages. */
+  toParentUserId?: string;
   context?: MetaMessageContext | null;
   text?: { body?: string; [key: string]: unknown };
   image?: { id?: string; link?: string; caption?: string; [key: string]: unknown };
@@ -205,6 +221,12 @@ export interface ContactRecord {
   profileName?: string;
   displayName?: string;
   whatsappUserId?: string;
+  /** Business-scoped user ID (BSUID) for this contact, when known. */
+  businessScopedUserId?: string | null;
+  /** Parent BSUID; only for businesses enrolled in parent BSUIDs. */
+  parentBusinessScopedUserId?: string | null;
+  /** WhatsApp username, when the user has adopted one. */
+  username?: string | null;
   customerId?: string | null;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;

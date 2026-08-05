@@ -16,7 +16,10 @@ const sessionSchema = z.object({
 
 const connectSchema = z.object({
   phoneNumberId: z.string().min(1),
-  to: z.string().min(1),
+  /** Callee phone number. Optional since BSUIDs; provide this, recipient, or both. */
+  to: z.string().min(1).optional(),
+  /** Callee business-scoped user ID (BSUID). The phone number wins when both are present. */
+  recipient: z.string().min(1).optional(),
   session: sessionSchema.optional(),
   bizOpaqueCallbackData: z.string().max(512).optional()
 });
@@ -67,10 +70,19 @@ export class CallsResource {
   constructor(private readonly client: WhatsAppClient) {}
 
   async connect(input: z.infer<typeof connectSchema>): Promise<CallConnectResponse> {
-    const { phoneNumberId, to, session, bizOpaqueCallbackData } = connectSchema.parse(input);
+    const { phoneNumberId, to, recipient, session, bizOpaqueCallbackData } =
+      connectSchema.parse(input);
+
+    if (!to && !recipient) {
+      throw new Error(
+        "Provide to (a phone number), recipient (a business-scoped user ID), or both."
+      );
+    }
+
     const body: Record<string, unknown> = {
       messagingProduct: "whatsapp",
-      to,
+      ...(to !== undefined ? { to } : {}),
+      ...(recipient !== undefined ? { recipient } : {}),
       action: "connect"
     };
     if (session) body.session = session;

@@ -58,6 +58,32 @@ describe("Calls API", () => {
     expect(body).not.toHaveProperty("session");
   });
 
+  it("connect accepts a BSUID recipient without a phone number", async () => {
+    const { fetchMock, calls } = setupFetch({
+      messaging_product: "whatsapp",
+      calls: [{ id: "wacid.TEST" }]
+    });
+    const client = new WhatsAppClient({ kapsoApiKey: "key", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
+
+    await client.calls.connect({
+      phoneNumberId: "123",
+      recipient: "US.13491208655302741918"
+    });
+
+    const body = JSON.parse(String(calls[0]?.init.body));
+    expect(body).toMatchObject({ recipient: "US.13491208655302741918", action: "connect" });
+    expect(body).not.toHaveProperty("to");
+  });
+
+  it("connect rejects a call with neither to nor recipient", async () => {
+    const { fetchMock } = setupFetch();
+    const client = new WhatsAppClient({ kapsoApiKey: "key", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
+
+    await expect(client.calls.connect({ phoneNumberId: "123" })).rejects.toThrow(
+      /to \(a phone number\), recipient \(a business-scoped user ID\)/
+    );
+  });
+
   it("preAccept posts pre_accept action", async () => {
     const { fetchMock, calls } = setupFetch();
     const client = new WhatsAppClient({ kapsoApiKey: "key", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });

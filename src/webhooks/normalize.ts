@@ -5,7 +5,12 @@ export interface MessageStatusUpdate {
   id: string;
   status: string;
   timestamp?: string;
+  /** Recipient phone number. Can be omitted; recipientUserId always arrives. */
   recipientId?: string;
+  /** Recipient business-scoped user ID (BSUID). */
+  recipientUserId?: string;
+  /** Recipient parent BSUID; only for businesses enrolled in parent BSUIDs. */
+  recipientParentUserId?: string;
   conversation?: Record<string, unknown>;
   pricing?: Record<string, unknown>;
   errors?: Array<Record<string, unknown>>;
@@ -202,6 +207,10 @@ function applyDirection(message: UnifiedMessage, metadata: Record<string, unknow
   } else if (contextFrom && businessSet.has(normalizeNumber(contextFrom))) {
     direction = "inbound";
   } else if (fromNorm) {
+    direction = "inbound";
+  } else if (typeof message.fromUserId === "string" && message.fromUserId.length > 0) {
+    // A message can arrive with no phone number at all once the sender has a
+    // username; the business-scoped user ID still identifies it as inbound.
     direction = "inbound";
   }
 
