@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const mediaSchema = z.object({
   id: z.string().min(1).optional(),
@@ -13,7 +13,7 @@ const imageMessageSchema = baseMessageSchema.extend({
   image: mediaSchema
 });
 
-type ImageMessageInput = z.infer<typeof imageMessageSchema>;
+type ImageMessageInput = z.infer<typeof imageMessageSchema> & RecipientAddress;
 
 export class ImageMessageSender {
   constructor(private readonly client: MessageSendClient) {}

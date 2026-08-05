@@ -234,3 +234,83 @@ describe("normalizeWebhook", () => {
     expect(normalizeWebhook({})).toMatchObject({ messages: [], statuses: [], calls: [] });
   });
 });
+
+describe("normalizeWebhook with business-scoped user IDs", () => {
+  const bsuidPayload = {
+    object: "whatsapp_business_account",
+    entry: [
+      {
+        id: "WABA_ID",
+        changes: [
+          {
+            field: "messages",
+            value: {
+              messaging_product: "whatsapp",
+              metadata: {
+                display_phone_number: "+1 631-555-8151",
+                phone_number_id: "16315558151"
+              },
+              contacts: [
+                {
+                  profile: { name: "Sheena Nelson", username: "realsheenanelson" },
+                  user_id: "US.13491208655302741918"
+                }
+              ],
+              messages: [
+                {
+                  from_user_id: "US.13491208655302741918",
+                  id: "wamid.nophone",
+                  timestamp: "1735689800",
+                  type: "text",
+                  text: { body: "Does it come in another color?" }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  };
+
+  it("camelizes BSUID fields and infers direction without a phone number", () => {
+    const result = normalizeWebhook(bsuidPayload);
+
+    const message = result.messages[0];
+    expect(message?.fromUserId).toBe("US.13491208655302741918");
+    expect(message?.from).toBeUndefined();
+    expect(message?.kapso?.direction).toBe("inbound");
+
+    const contact = result.contacts[0];
+    expect(contact?.userId).toBe("US.13491208655302741918");
+    expect((contact?.profile as { username?: string })?.username).toBe("realsheenanelson");
+  });
+
+  it("passes recipient_user_id through on statuses", () => {
+    const result = normalizeWebhook({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                messaging_product: "whatsapp",
+                metadata: { phone_number_id: "16315558151" },
+                statuses: [
+                  {
+                    id: "wamid.status",
+                    status: "delivered",
+                    recipient_user_id: "US.13491208655302741918"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(result.statuses[0]?.recipientUserId).toBe("US.13491208655302741918");
+    expect(result.statuses[0]?.recipientId).toBeUndefined();
+  });
+});

@@ -98,6 +98,8 @@ Notes:
 
 Below are concise examples for common message types. Assume `client` is created as shown above.
 
+Every send accepts `to` (a phone number), `recipient` (a business-scoped user ID), or both. See [Business-scoped user IDs](#business-scoped-user-ids-bsuids).
+
 ### Text
 ```ts
 await client.messages.sendText({
@@ -261,6 +263,37 @@ await client.messages.sendInteractiveCatalogMessage({
   parameters: { thumbnailProductRetailerId: "SKU-123" }
 });
 ```
+
+## Business-scoped user IDs (BSUIDs)
+
+Meta is replacing phone numbers as the way to identify WhatsApp users. Every user already has a business-scoped user ID (`US.13491208655302741918`), it arrives on every webhook, and for users who adopt a username the phone number eventually stops arriving.
+
+All message builders and `calls.connect` take `recipient` alongside `to`. Provide either or both; when both are present, Meta delivers to the phone number.
+
+```ts
+// By BSUID only (the phone number never arrived):
+await client.messages.sendText({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  recipient: "US.13491208655302741918",
+  body: "On its way.",
+});
+
+// Recommended default when you have both identifiers:
+await client.messages.sendText({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  recipient: "US.13491208655302741918",
+  body: "On its way.",
+});
+```
+
+On webhooks, `normalizeWebhook` surfaces the identifiers as `message.fromUserId`, `message.fromParentUserId`, `contact.userId`, and `status.recipientUserId`, and infers message direction even when no phone number arrives. Statuses for your own sends carry both identifiers, which is the cheapest way to build your phone-to-BSUID mapping.
+
+`isBusinessScopedUserId(value)` (and `BSUID_PATTERN`) check the shape, including the parent `ENT` variant. The builders deliberately do not enforce it, so future format changes on Meta's side don't turn valid sends into client-side errors.
+
+One limit from Meta: one-tap, zero-tap and copy-code authentication templates require a phone number and cannot be delivered to a BSUID (error `131062`).
+
+For the full migration story, read the [Business-scoped user IDs guide](https://kapso.com/guides/business-scoped-user-ids).
 
 ## Flows
 
@@ -471,11 +504,15 @@ const message = await client.messages.get({
 
 // Contacts
 const contacts = await client.contacts.list({ phoneNumberId: "647015955153740", customerId: "123", });
-await client.contacts.update({
-  phoneNumberId: "647015955153740",
-  waId: contacts.data[0].waId,
-  metadata: { tags: ["vip"], source: "import" },
-});
+// waId can be absent: contacts identified only by their BSUID exist.
+const waId = contacts.data[0].waId;
+if (waId) {
+  await client.contacts.update({
+    phoneNumberId: "647015955153740",
+    waId,
+    metadata: { tags: ["vip"], source: "import" },
+  });
+}
 
 // Call logs
 const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", limit: 20, });

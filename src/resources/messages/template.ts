@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 import type { TemplateSendPayload } from "../templates/types";
 
 const templateComponentSchema = z.object({
@@ -21,7 +21,7 @@ const templateMessageSchema = baseMessageSchema.extend({
   template: templateSchema
 });
 
-export type TemplateMessageInput = z.input<typeof templateMessageSchema>;
+export type TemplateMessageInput = z.input<typeof templateMessageSchema> & RecipientAddress;
 
 export class TemplateMessageSender {
   constructor(private readonly client: MessageSendClient) {}

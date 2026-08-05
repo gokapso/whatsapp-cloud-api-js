@@ -840,3 +840,112 @@ describe("Messages resource", () => {
     });
   });
 });
+
+describe("BSUID recipients", () => {
+  const setupFetch = () => {
+    const responses: Array<{ url: string; init: RequestInit }> = [];
+    const fetchMock: typeof fetch = async (input, init) => {
+      const url = typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+
+      responses.push({ url, init: (init ?? {}) as RequestInit });
+      return new Response(
+        JSON.stringify({
+          messaging_product: "whatsapp",
+          contacts: [{ input: "US.13491208655302741918", user_id: "US.13491208655302741918" }],
+          messages: [{ id: "wamid.TEST" }]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    };
+
+    return { fetchMock, responses } as const;
+  };
+
+  it("sends a text message addressed by BSUID only", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    const result = await client.messages.sendText({
+      phoneNumberId: "123",
+      recipient: "US.13491208655302741918",
+      body: "On its way."
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      messaging_product: "whatsapp",
+      recipient: "US.13491208655302741918",
+      type: "text"
+    });
+    expect(parsedBody).not.toHaveProperty("to");
+    expect(result.contacts[0]?.userId).toBe("US.13491208655302741918");
+  });
+
+  it("sends both to and recipient when both are provided", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendText({
+      phoneNumberId: "123",
+      to: "15551234567",
+      recipient: "US.13491208655302741918",
+      body: "Hello"
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      to: "15551234567",
+      recipient: "US.13491208655302741918"
+    });
+  });
+
+  it("sends an interactive message addressed by BSUID only", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveButtons({
+      phoneNumberId: "123",
+      recipient: "US.13491208655302741918",
+      bodyText: "Pick one",
+      buttons: [{ id: "a", title: "Option A" }]
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({
+      recipient: "US.13491208655302741918",
+      type: "interactive"
+    });
+    expect(parsedBody).not.toHaveProperty("to");
+  });
+
+  it("sends a raw interactive message addressed by BSUID only", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveRaw({
+      phoneNumberId: "123",
+      recipient: "US.13491208655302741918",
+      interactive: { type: "button", body: { text: "Pick" }, action: { buttons: [] } }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody).toMatchObject({ recipient: "US.13491208655302741918" });
+    expect(parsedBody).not.toHaveProperty("to");
+  });
+
+  it("rejects a send with neither to nor recipient", async () => {
+    const { fetchMock } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    // No longer compiles without a cast: RecipientAddress requires one of the two.
+    const invalidInput = { phoneNumberId: "123", body: "Hello" } as never;
+
+    await expect(
+      client.messages.sendText(invalidInput)
+    ).rejects.toThrow(/to \(a phone number\), recipient \(a business-scoped user ID\)/);
+  });
+});

@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const textMessageSchema = baseMessageSchema.extend({
   body: z.string().min(1, "body must not be empty"),
   previewUrl: z.boolean().optional()
 });
 
-type TextMessageInput = z.infer<typeof textMessageSchema>;
+type TextMessageInput = z.infer<typeof textMessageSchema> & RecipientAddress;
 
 export class TextMessageSender {
   constructor(private readonly client: MessageSendClient) {}

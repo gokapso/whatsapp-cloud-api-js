@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const locationSchema = z.object({
   latitude: z.number(),
@@ -12,7 +12,7 @@ const locationMessageSchema = baseMessageSchema.extend({
   location: locationSchema
 });
 
-export type LocationMessageInput = z.infer<typeof locationMessageSchema>;
+export type LocationMessageInput = z.infer<typeof locationMessageSchema> & RecipientAddress;
 
 export class LocationMessageSender {
   constructor(private readonly client: MessageSendClient) {}

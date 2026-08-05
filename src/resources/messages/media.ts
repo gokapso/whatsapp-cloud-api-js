@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
 
 const mediaRefBaseSchema = z.object({
   id: z.string().min(1).optional(),
@@ -48,10 +48,10 @@ const stickerMessageSchema = baseMessageSchema.extend({
   sticker: stickerSchema
 });
 
-export type DocumentMessageInput = z.infer<typeof documentMessageSchema>;
-export type VideoMessageInput = z.infer<typeof videoMessageSchema>;
-export type AudioMessageInput = z.infer<typeof audioMessageSchema>;
-export type StickerMessageInput = z.infer<typeof stickerMessageSchema>;
+export type DocumentMessageInput = z.infer<typeof documentMessageSchema> & RecipientAddress;
+export type VideoMessageInput = z.infer<typeof videoMessageSchema> & RecipientAddress;
+export type AudioMessageInput = z.infer<typeof audioMessageSchema> & RecipientAddress;
+export type StickerMessageInput = z.infer<typeof stickerMessageSchema> & RecipientAddress;
 
 export class DocumentMessageSender {
   constructor(private readonly client: MessageSendClient) {}
