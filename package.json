@@ -1,6 +1,6 @@
 {
   "name": "@kapso/whatsapp-cloud-api",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "TypeScript client for WhatsApp Business Cloud API with typed responses and Zod-validated builders.",
   "main": "./dist/index.cjs",
   "scripts": {
@@ -8,8 +8,9 @@
     "build:watch": "tsdown --watch",
     "prepare": "npm run build",
     "docs": "typedoc",
-    "test": "vitest run",
+    "test": "npm run typecheck && vitest run",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\""
   },
   "author": "Kapso",
