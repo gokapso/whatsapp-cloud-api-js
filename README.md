@@ -766,8 +766,11 @@ await client.calls.permissions.get({ phoneNumberId, recipient: "US.1349120865530
 
 `normalizeWebhook` (from `/server`) collects all entries and changes, aliases Meta
 `id` to `callId`, and preserves the original `id` and legacy `wacid` when present.
-`isCallArtifactEvent` identifies `call_recording_available` and
-`call_transcription_available`; these late events must not start another call.
+`isCallArtifactEvent` identifies `call_recording_available`,
+`call_transcription_available`, and `call_transcript_available`; these late events
+must not start another call. `getCallArtifactKind` maps both transcript spellings
+to `transcription` (and recording to `recording`) without rewriting `event`.
+Other events return `undefined`.
 Their typed `callRecording.audio` and `callTranscript.document` include media
 metadata. A BSUID-only event can omit `from`.
 
@@ -787,7 +790,7 @@ attachment bytes for either kind. Stream or parse that response as appropriate.
 
 ```ts
 import { WhatsAppClient, GraphApiError } from "@kapso/whatsapp-cloud-api";
-import { verifyKapsoWebhookSignature, normalizeWebhook, isCallArtifactEvent } from "@kapso/whatsapp-cloud-api/server";
+import { verifyKapsoWebhookSignature, normalizeWebhook, getCallArtifactKind } from "@kapso/whatsapp-cloud-api/server";
 
 const client = new WhatsAppClient({ kapsoApiKey, baseUrl: "https://api.kapso.ai/meta/whatsapp" });
 if (!verifyKapsoWebhookSignature({ secret: webhookSecret, rawBody, signatureHeader })) {
@@ -795,11 +798,11 @@ if (!verifyKapsoWebhookSignature({ secret: webhookSecret, rawBody, signatureHead
 }
 const webhook = normalizeWebhook(JSON.parse(rawBody.toString("utf8")));
 for (const event of webhook.calls) {
-  if (!isCallArtifactEvent(event) || !event.callId || !webhook.phoneNumberId) continue;
+  const kind = getCallArtifactKind(event);
+  if (!kind || !event.callId || !webhook.phoneNumberId) continue;
   const call = await client.calls.get({ phoneNumberId: webhook.phoneNumberId, callId: event.callId });
   if (!call) continue;
   const { data: detail } = await client.calls.details({ callUuid: call.id });
-  const kind = event.event === "call_recording_available" ? "recording" : "transcription";
   if (detail.artifacts[kind].state !== "available") continue;
   try {
     const response = await client.calls.fetchArtifact({ callUuid: call.id, kind });

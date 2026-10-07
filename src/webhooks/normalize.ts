@@ -1,5 +1,5 @@
 import { toCamelCaseDeep } from "../utils/case";
-import type { KapsoMessageExtensions, MetaMessage, UnifiedMessage } from "../types";
+import type { CallArtifactKind, KapsoMessageExtensions, MetaMessage, UnifiedMessage } from "../types";
 
 export interface MessageStatusUpdate {
   id: string;
@@ -281,9 +281,25 @@ function toCamelField(field: unknown): string | undefined {
   return field.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
 }
 
+/** Native call artifact completion event names, including both transcript spellings. @category Webhooks */
+export type CallArtifactEventName = "call_recording_available" | "call_transcription_available" | "call_transcript_available";
+
+/** Classify a completion without changing its original event name. @category Webhooks */
+export function getCallArtifactKind(event: NormalizedCallEvent): CallArtifactKind | undefined {
+  switch (event.event) {
+    case "call_recording_available":
+      return "recording";
+    case "call_transcription_available":
+    case "call_transcript_available":
+      return "transcription";
+    default:
+      return undefined;
+  }
+}
+
 /** Completion events arrive after a call; they must not start a call session. @category Webhooks */
 export function isCallArtifactEvent(event: NormalizedCallEvent): event is NormalizedCallEvent & {
-  event: "call_recording_available" | "call_transcription_available";
+  event: CallArtifactEventName;
 } {
-  return event.event === "call_recording_available" || event.event === "call_transcription_available";
+  return getCallArtifactKind(event) !== undefined;
 }
