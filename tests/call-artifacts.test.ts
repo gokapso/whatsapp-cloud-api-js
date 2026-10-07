@@ -33,6 +33,29 @@ describe("Kapso native call artifacts", () => {
     expectTypeOf(detail.data.artifacts.recording.mediaId).toEqualTypeOf<string | undefined>();
   });
 
+  it("preserves null identity and missing MIME/checksum from an ID-only completion event", async () => {
+    const { client } = setup(() => json({ data: {
+      id: callUuid, call_id: "wacid.PLACEHOLDER", business_scoped_user_id: null,
+      parent_business_scoped_user_id: null, username: null,
+      artifacts: {
+        recording: { state: "available", media_id: "111", mime_type: null, sha256: null,
+          received_at: "2026-10-06T12:00:00Z", expires_at: "2026-10-13T12:00:00Z",
+          fetch_path: `/api/v1/whatsapp_calls/${callUuid}/artifacts/recording` },
+        transcription: { state: "absent" }
+      }
+    } }));
+    const { data } = await client.calls.details({ callUuid });
+    expect(data).toMatchObject({ businessScopedUserId: null, parentBusinessScopedUserId: null, username: null,
+      artifacts: { recording: { state: "available", mediaId: "111", mimeType: null, sha256: null }, transcription: { state: "absent" } } });
+    expectTypeOf(data.businessScopedUserId).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(data.parentBusinessScopedUserId).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(data.username).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(data.artifacts.recording.mimeType).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(data.artifacts.recording.sha256).toEqualTypeOf<string | null | undefined>();
+    expect(data.artifacts.transcription).not.toHaveProperty("mimeType");
+    expect(data.artifacts.transcription).not.toHaveProperty("sha256");
+  });
+
   it("supports an explicit custom app origin while retaining key-only auth", async () => {
     const { client, calls } = setup(() => json({ data: {} }), { baseUrl: "https://proxy.example.test/meta", kapsoAppBaseUrl: "https://app.example.test/", accessToken: "meta-secret" });
     await client.calls.details({ callUuid });

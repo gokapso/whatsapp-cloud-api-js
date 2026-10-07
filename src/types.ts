@@ -376,8 +376,8 @@ export type CallArtifactKind = "recording" | "transcription";
 export type CallArtifactSummary = {
   state: "absent" | "available" | "expired";
   mediaId?: string;
-  mimeType?: string;
-  sha256?: string;
+  mimeType?: string | null;
+  sha256?: string | null;
   receivedAt?: string;
   expiresAt?: string;
   /** Relative app API path, for display; fetchArtifact constructs its own trusted path. */
