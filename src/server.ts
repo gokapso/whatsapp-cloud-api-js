@@ -1,5 +1,5 @@
 export { verifySignature, verifyKapsoWebhookSignature } from "./webhooks/verify";
-export { normalizeWebhook, isCallArtifactEvent } from "./webhooks/normalize";
+export { normalizeWebhook, isCallArtifactEvent, getCallArtifactKind } from "./webhooks/normalize";
 export {
   receive as receiveFlowEvent,
   respond as respondToFlow,
@@ -7,4 +7,4 @@ export {
   FlowServerError
 } from "./server/flows";
 
-export type { CallArtifactMedia, NormalizedCallEvent, NormalizedWebhookResult } from "./webhooks/normalize";
+export type { CallArtifactEventName, CallArtifactMedia, NormalizedCallEvent, NormalizedWebhookResult } from "./webhooks/normalize";

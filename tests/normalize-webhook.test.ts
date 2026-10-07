@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { normalizeWebhook, isCallArtifactEvent } from "../src/server";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { normalizeWebhook, isCallArtifactEvent, getCallArtifactKind } from "../src/server";
 
 describe("normalizeWebhook", () => {
   it("normalizes Meta webhook payloads into unified structures", () => {
@@ -317,7 +317,8 @@ describe("normalizeWebhook with business-scoped user IDs", () => {
 
 
 describe("native call artifact events", () => {
-  it("normalizes every Meta id and media across batched BSUID-only entries", () => {
+  it.each(["call_transcript_available", "call_transcription_available"])("normalizes every Meta id and media across batched BSUID-only entries (%s)", (transcriptEvent) => {
+    // Synthetic documented media shape; the observed short-name live body was not retained.
     const value = (calls: unknown[]) => ({ messaging_product: "whatsapp", metadata: { phone_number_id: "PNID" }, calls });
     const result = normalizeWebhook({ object: "whatsapp_business_account", entry: [
       { id: "WABA", changes: [{ field: "calls", value: value([
@@ -326,17 +327,30 @@ describe("native call artifact events", () => {
       { id: "WABA", changes: [
         { field: "calls", value: value([{ id: "wacid.CONNECT", event: "call_recording_available", from_user_id: "US.1",
           call_recording: { type: "audio", audio: { id: "111", sha256: "hash", mime_type: "audio/ogg; codecs=opus", url: "https://lookaside.fbsbx.com/fixture" } } }]) },
-        { field: "calls", value: value([{ id: "wacid.CONNECT", event: "call_transcription_available", from_user_id: "US.1",
+        { field: "calls", value: value([{ id: "wacid.CONNECT", event: transcriptEvent, from_user_id: "US.1",
           call_transcript: { document: { id: "222", mime_type: "application/json" } } }]) }
       ] }
     ] });
     expect(result.calls).toHaveLength(3);
     expect(result.calls.map(isCallArtifactEvent)).toEqual([false, true, true]);
+    expect(result.calls.map(getCallArtifactKind)).toEqual([undefined, "recording", "transcription"]);
     expect(isCallArtifactEvent({ event: "terminate" })).toBe(false);
+    expect(isCallArtifactEvent({ event: "call_unknown_available" })).toBe(false);
+    expect(getCallArtifactKind({ event: "call_unknown_available" })).toBeUndefined();
+    expect(getCallArtifactKind({})).toBeUndefined();
+    expect(result.calls.map(call => call.event)).toEqual(["connect", "call_recording_available", transcriptEvent]);
     expect(result.calls.map(call => call.callId)).toEqual(["wacid.CONNECT", "wacid.CONNECT", "wacid.CONNECT"]);
     expect(result.calls.every(call => call.id === "wacid.CONNECT" && call.fromUserId === "US.1" && call.from === undefined)).toBe(true);
     expect(result.calls[1]?.callRecording).toMatchObject({ audio: { id: "111", mimeType: "audio/ogg; codecs=opus" } });
     expect(result.calls[2]?.callTranscript).toMatchObject({ document: { id: "222", mimeType: "application/json" } });
+    expect((result.raw.calls[2]?.calls as Array<Record<string, unknown>>)[0]?.event).toBe(transcriptEvent);
+  });
+
+  it("narrows both transcription spellings in the public artifact event type", () => {
+    const event = normalizeWebhook({ entry: [{ changes: [{ value: { calls: [{ event: "call_transcript_available" }] } }] }] }).calls[0]!;
+    if (isCallArtifactEvent(event)) {
+      expectTypeOf(event.event).toEqualTypeOf<"call_recording_available" | "call_transcription_available" | "call_transcript_available">();
+    }
   });
 
   it("preserves explicit callId, legacy wacid, and raw Meta id with alias priority", () => {
