@@ -212,6 +212,26 @@ describe("Calls API", () => {
     expectTypeOf(call?.callId).toEqualTypeOf<string | undefined>();
   });
 
+  it.each(["list", "get"] as const)("%s preserves explicit null identity fields for phone-only calls", async (action) => {
+    const { fetchMock } = setupFetch({
+      data: [{
+        id: "a29edbfe-f181-4a10-b3b0-0d2bb66e390b", call_id: "wacid.PHONE",
+        user_wa_id: "15551234567", business_scoped_user_id: null,
+        parent_business_scoped_user_id: null, username: null
+      }],
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
+    });
+    const client = new WhatsAppClient({ kapsoApiKey: "key", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
+    const call = action === "list"
+      ? (await client.calls.list({ phoneNumberId: "123" })).data[0]
+      : await client.calls.get({ phoneNumberId: "123", callId: "wacid.PHONE" });
+
+    expect(call).toMatchObject({ businessScopedUserId: null, parentBusinessScopedUserId: null, username: null });
+    expectTypeOf(call?.businessScopedUserId).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(call?.parentBusinessScopedUserId).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(call?.username).toEqualTypeOf<string | null | undefined>();
+  });
+
   it("get returns undefined when call not found", async () => {
     const { fetchMock } = setupFetch({
       data: [],

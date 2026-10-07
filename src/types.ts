@@ -355,9 +355,9 @@ export interface CallRecord {
   /** Meta call identifier (wacid). */
   callId?: string;
   phoneNumberId?: string;
-  businessScopedUserId?: string;
-  parentBusinessScopedUserId?: string;
-  username?: string;
+  businessScopedUserId?: string | null;
+  parentBusinessScopedUserId?: string | null;
+  username?: string | null;
   whatsappConfigId?: string;
   direction?: string;
   status?: string;
