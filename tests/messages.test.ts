@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { WhatsAppClient } from "../src";
+import { WhatsAppClient, buildTemplatePayload, buildTemplateSendPayload } from "../src";
 import type { CarouselInteractiveInput } from "../src";
 import type { FlowInteractiveInput } from "../src/resources/messages/interactive";
 
@@ -565,6 +565,78 @@ describe("Messages resource", () => {
       template: {
         name: "order_confirmation",
         language: { code: "en_US" }
+      }
+    });
+  });
+
+  it("accepts a typed builder result for sendTemplate", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const template = buildTemplateSendPayload({
+      name: "order_confirmation",
+      language: "en_US",
+      header: { type: "image", image: { link: "https://example.com/banner.jpg" } },
+      body: [{ type: "text", text: "Jessica" }],
+      buttons: [{
+        type: "button",
+        subType: "quick_reply",
+        index: 0,
+        parameters: [{ type: "payload", payload: "CONFIRM" }]
+      }]
+    });
+
+    const result = await client.messages.sendTemplate({
+      phoneNumberId: "123",
+      to: "15551234567",
+      template
+    });
+
+    expect(result).toEqual(expectedClientResponse);
+    expect(JSON.parse(String(responses[0]?.init.body))).toMatchObject({
+      type: "template",
+      to: "15551234567",
+      template: {
+        name: "order_confirmation",
+        language: { code: "en_US" },
+        components: [
+          { type: "header", parameters: [{ type: "image", image: { link: "https://example.com/banner.jpg" } }] },
+          { type: "body", parameters: [{ type: "text", text: "Jessica" }] },
+          { type: "button", sub_type: "quick_reply", index: 0, parameters: [{ type: "payload", payload: "CONFIRM" }] }
+        ]
+      }
+    });
+  });
+
+  it("accepts a raw builder result for sendTemplate with a BSUID", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const template = buildTemplatePayload({
+      name: "order_confirmation",
+      language: "en_US",
+      components: [{
+        type: "body",
+        parameters: [{ type: "text", parameter_name: "customer", text: "Jessica" }]
+      }]
+    });
+
+    await client.messages.sendTemplate({
+      phoneNumberId: "123",
+      recipient: "US.13491208655302741918",
+      template
+    });
+
+    const payload = JSON.parse(String(responses[0]?.init.body));
+    expect(payload).not.toHaveProperty("to");
+    expect(payload).toMatchObject({
+      type: "template",
+      recipient: "US.13491208655302741918",
+      template: {
+        name: "order_confirmation",
+        language: { code: "en_US" },
+        components: [{
+          type: "body",
+          parameters: [{ type: "text", parameter_name: "customer", text: "Jessica" }]
+        }]
       }
     });
   });

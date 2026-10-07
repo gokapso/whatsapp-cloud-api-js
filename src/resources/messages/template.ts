@@ -21,7 +21,10 @@ const templateMessageSchema = baseMessageSchema.extend({
   template: templateSchema
 });
 
-export type TemplateMessageInput = z.input<typeof templateMessageSchema> & RecipientAddress;
+// Builder component interfaces lack the index signature inferred by Zod's loose schema.
+export type TemplateMessageInput = Omit<z.input<typeof templateMessageSchema>, "template"> & {
+  template: TemplateSendPayload | z.input<typeof templateSchema>;
+} & RecipientAddress;
 
 export class TemplateMessageSender {
   constructor(private readonly client: MessageSendClient) {}
