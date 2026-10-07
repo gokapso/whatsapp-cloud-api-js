@@ -516,7 +516,10 @@ if (waId) {
 
 // Call logs
 const calls = await client.calls.list({ phoneNumberId: "647015955153740", direction: "INBOUND", limit: 20, });
-const call = await client.calls.get({ phoneNumberId: "647015955153740", callId: calls.data[0].id, });
+const metaCallId = calls.data[0]?.callId; // Meta wacid, not the local id UUID
+if (metaCallId) {
+  const call = await client.calls.get({ phoneNumberId: "647015955153740", callId: metaCallId });
+}
 ```
 
 All history endpoints return Meta-compatible records with Graph paging:
@@ -738,6 +741,35 @@ When a response is not OK, the client throws an `Error` whose message includes t
 ```
 Meta API request failed with status 400: {"error":{...}}
 ```
+
+### Native call capture and BSUID permissions
+
+Capture is optional on `calls.connect` and `calls.accept`. Meta plays a consent
+announcement before capture starts. Supply a purpose of 1–250 characters in the
+announcement language. Recording and transcription can be enabled independently;
+omitting them keeps capture off, and `DISABLED` needs no purpose or language.
+`preAccept` rejects capture keys, including for JavaScript callers.
+
+```ts
+import type { CallCaptureOptions } from "@kapso/whatsapp-cloud-api";
+
+const capture: CallCaptureOptions = {
+  status: "ENABLED", purpose: "quality assurance", announcementLanguage: "en_US",
+};
+await client.calls.accept({
+  phoneNumberId, callId: "wacid.…", session: { sdpType: "answer", sdp },
+  recording: capture, transcription: capture,
+});
+await client.calls.permissions.get({ phoneNumberId, recipient: "US.13491208655302741918" });
+// Alternatively pass userWaId (phone); exactly one identity is required.
+```
+
+`normalizeWebhook` (from `/server`) collects all entries and changes, aliases Meta
+`id` to `callId`, and preserves the original `id` and legacy `wacid` when present.
+`isCallArtifactEvent` identifies `call_recording_available` and
+`call_transcription_available`; these late events must not start another call.
+Their typed `callRecording.audio` and `callTranscript.document` include media
+metadata. A BSUID-only event can omit `from`.
 
 ## License
 

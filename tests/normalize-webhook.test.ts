@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeWebhook } from "../src/server";
+import { normalizeWebhook, isCallArtifactEvent } from "../src/server";
 
 describe("normalizeWebhook", () => {
   it("normalizes Meta webhook payloads into unified structures", () => {
@@ -312,5 +312,41 @@ describe("normalizeWebhook with business-scoped user IDs", () => {
 
     expect(result.statuses[0]?.recipientUserId).toBe("US.13491208655302741918");
     expect(result.statuses[0]?.recipientId).toBeUndefined();
+  });
+});
+
+
+describe("native call artifact events", () => {
+  it("normalizes every Meta id and media across batched BSUID-only entries", () => {
+    const value = (calls: unknown[]) => ({ messaging_product: "whatsapp", metadata: { phone_number_id: "PNID" }, calls });
+    const result = normalizeWebhook({ object: "whatsapp_business_account", entry: [
+      { id: "WABA", changes: [{ field: "calls", value: value([
+        { id: "wacid.CONNECT", event: "connect", direction: "USER_INITIATED", from_user_id: "US.1", session: { sdp_type: "offer", sdp: "v=0" } }
+      ]) }] },
+      { id: "WABA", changes: [
+        { field: "calls", value: value([{ id: "wacid.CONNECT", event: "call_recording_available", from_user_id: "US.1",
+          call_recording: { type: "audio", audio: { id: "111", sha256: "hash", mime_type: "audio/ogg; codecs=opus", url: "https://lookaside.fbsbx.com/fixture" } } }]) },
+        { field: "calls", value: value([{ id: "wacid.CONNECT", event: "call_transcription_available", from_user_id: "US.1",
+          call_transcript: { document: { id: "222", mime_type: "application/json" } } }]) }
+      ] }
+    ] });
+    expect(result.calls).toHaveLength(3);
+    expect(result.calls.map(isCallArtifactEvent)).toEqual([false, true, true]);
+    expect(isCallArtifactEvent({ event: "terminate" })).toBe(false);
+    expect(result.calls.map(call => call.callId)).toEqual(["wacid.CONNECT", "wacid.CONNECT", "wacid.CONNECT"]);
+    expect(result.calls.every(call => call.id === "wacid.CONNECT" && call.fromUserId === "US.1" && call.from === undefined)).toBe(true);
+    expect(result.calls[1]?.callRecording).toMatchObject({ audio: { id: "111", mimeType: "audio/ogg; codecs=opus" } });
+    expect(result.calls[2]?.callTranscript).toMatchObject({ document: { id: "222", mimeType: "application/json" } });
+  });
+
+  it("preserves explicit callId, legacy wacid, and raw Meta id with alias priority", () => {
+    const calls = normalizeWebhook({ entry: [{ changes: [{ value: { calls: [
+      { call_id: "explicit", wacid: "legacy", id: "meta" },
+      { wacid: "legacy", id: "meta" },
+      { id: "meta" }
+    ] } }] }] }).calls;
+    expect(calls.map(call => call.callId)).toEqual(["explicit", "legacy", "meta"]);
+    expect(calls[0]).toMatchObject({ wacid: "legacy", id: "meta" });
+    expect(calls[1]).toMatchObject({ wacid: "legacy", id: "meta" });
   });
 });

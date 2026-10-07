@@ -15,6 +15,29 @@ const sessionSchema = z.object({
   sdp: z.string().min(1)
 });
 
+const captureFields = {
+  purpose: z.string().min(1).max(250),
+  announcementLanguage: z.string().min(1)
+};
+
+const captureSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("ENABLED"), ...captureFields }),
+  z.object({
+    status: z.literal("DISABLED"),
+    purpose: captureFields.purpose.optional(),
+    announcementLanguage: captureFields.announcementLanguage.optional()
+  })
+]);
+
+/** Native capture is opt-in on connect/accept, never preAccept. @category Calls */
+export type CallCaptureOptions = z.infer<typeof captureSchema>;
+
+/** Select exactly one permission identity. @category Calls */
+export type CallPermissionsInput = { phoneNumberId: string } & (
+  | { userWaId: string; recipient?: never }
+  | { recipient: string; userWaId?: never }
+);
+
 const connectSchema = z.object({
   phoneNumberId: z.string().min(1),
   /** Callee phone number. Optional since BSUIDs; provide this, recipient, or both. */
@@ -22,7 +45,9 @@ const connectSchema = z.object({
   /** Callee business-scoped user ID (BSUID). The phone number wins when both are present. */
   recipient: z.string().min(1).optional(),
   session: sessionSchema.optional(),
-  bizOpaqueCallbackData: z.string().max(512).optional()
+  bizOpaqueCallbackData: z.string().max(512).optional(),
+  recording: captureSchema.optional(),
+  transcription: captureSchema.optional()
 });
 
 const callIdSchema = z.object({
@@ -35,12 +60,17 @@ const preAcceptSchema = callIdSchema.extend({
 });
 
 const acceptSchema = preAcceptSchema.extend({
-  bizOpaqueCallbackData: z.string().max(512).optional()
+  bizOpaqueCallbackData: z.string().max(512).optional(),
+  recording: captureSchema.optional(),
+  transcription: captureSchema.optional()
 });
 
 const permissionsSchema = z.object({
   phoneNumberId: z.string().min(1),
-  userWaId: z.string().min(1)
+  userWaId: z.string().min(1).optional(),
+  recipient: z.string().min(1).optional()
+}).refine(input => (input.userWaId !== undefined) !== (input.recipient !== undefined), {
+  message: "Provide exactly one of userWaId (phone) or recipient (BSUID)."
 });
 
 const listSchema = z
@@ -71,7 +101,7 @@ export class CallsResource {
   constructor(private readonly client: WhatsAppClient) {}
 
   async connect(input: z.infer<typeof connectSchema> & RecipientAddress): Promise<CallConnectResponse> {
-    const { phoneNumberId, to, recipient, session, bizOpaqueCallbackData } =
+    const { phoneNumberId, to, recipient, session, bizOpaqueCallbackData, recording, transcription } =
       connectSchema.parse(input);
 
     if (!to && !recipient) {
@@ -88,6 +118,8 @@ export class CallsResource {
     };
     if (session) body.session = session;
     if (bizOpaqueCallbackData) body.bizOpaqueCallbackData = bizOpaqueCallbackData;
+    if (recording) body.recording = recording;
+    if (transcription) body.transcription = transcription;
 
     return this.client.request<CallConnectResponse>("POST", `${phoneNumberId}/calls`, {
       body,
@@ -96,6 +128,9 @@ export class CallsResource {
   }
 
   async preAccept(input: z.infer<typeof preAcceptSchema>): Promise<CallActionResponse> {
+    if ("recording" in input || "transcription" in input) {
+      throw new Error("Capture options apply to connect/accept only, not preAccept.");
+    }
     const { phoneNumberId, callId, session } = preAcceptSchema.parse(input);
     return this.client.request<CallActionResponse>("POST", `${phoneNumberId}/calls`, {
       body: {
@@ -109,7 +144,7 @@ export class CallsResource {
   }
 
   async accept(input: z.infer<typeof acceptSchema>): Promise<CallActionResponse> {
-    const { phoneNumberId, callId, session, bizOpaqueCallbackData } = acceptSchema.parse(input);
+    const { phoneNumberId, callId, session, bizOpaqueCallbackData, recording, transcription } = acceptSchema.parse(input);
     const body: Record<string, unknown> = {
       messagingProduct: "whatsapp",
       callId,
@@ -117,6 +152,8 @@ export class CallsResource {
       session
     };
     if (bizOpaqueCallbackData) body.bizOpaqueCallbackData = bizOpaqueCallbackData;
+    if (recording) body.recording = recording;
+    if (transcription) body.transcription = transcription;
     return this.client.request<CallActionResponse>("POST", `${phoneNumberId}/calls`, {
       body,
       responseType: "json"
@@ -148,10 +185,10 @@ export class CallsResource {
   }
 
   readonly permissions = {
-    get: async (input: z.infer<typeof permissionsSchema>): Promise<CallPermissionsResponse> => {
+    get: async (input: CallPermissionsInput): Promise<CallPermissionsResponse> => {
       const parsed = permissionsSchema.parse(input);
       return this.client.request<CallPermissionsResponse>("GET", `${parsed.phoneNumberId}/call_permissions`, {
-        query: { userWaId: parsed.userWaId },
+        query: { userWaId: parsed.userWaId, recipient: parsed.recipient },
         responseType: "json"
       });
     }

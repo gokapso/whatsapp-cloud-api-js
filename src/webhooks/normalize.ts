@@ -31,7 +31,21 @@ export interface NormalizedWebhookContact {
   [key: string]: unknown;
 }
 
+/** Media metadata in a native call completion webhook. @category Webhooks */
+export type CallArtifactMedia = {
+  id: string;
+  sha256?: string;
+  mimeType?: string;
+  url?: string;
+};
+
 export interface NormalizedCallEvent {
+  /** Original Meta id, preserved alongside the callId alias. */
+  id?: string;
+  /** Legacy identifier, preserved when supplied. */
+  wacid?: string;
+  callRecording?: { type?: string; audio?: CallArtifactMedia };
+  callTranscript?: { document?: CallArtifactMedia };
   event?: string;
   callId?: string;
   direction?: string;
@@ -144,10 +158,13 @@ export function normalizeWebhook(payload: unknown): NormalizedWebhookResult {
 
       const calls = Array.isArray(value.calls) ? value.calls : [];
       for (const call of calls) {
-        const normalizedCall = toCamelCaseDeep(call) as NormalizedCallEvent & { wacid?: string };
-        if (typeof normalizedCall.wacid === "string" && !normalizedCall.callId) {
-          normalizedCall.callId = normalizedCall.wacid;
-          delete normalizedCall.wacid;
+        const normalizedCall = toCamelCaseDeep(call) as NormalizedCallEvent;
+        if (!normalizedCall.callId) {
+          if (typeof normalizedCall.wacid === "string") {
+            normalizedCall.callId = normalizedCall.wacid;
+          } else if (typeof normalizedCall.id === "string") {
+            normalizedCall.callId = normalizedCall.id;
+          }
         }
         result.calls.push(normalizedCall);
       }
@@ -262,4 +279,11 @@ function toCamelField(field: unknown): string | undefined {
     return undefined;
   }
   return field.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
+}
+
+/** Completion events arrive after a call; they must not start a call session. @category Webhooks */
+export function isCallArtifactEvent(event: NormalizedCallEvent): event is NormalizedCallEvent & {
+  event: "call_recording_available" | "call_transcription_available";
+} {
+  return event.event === "call_recording_available" || event.event === "call_transcription_available";
 }

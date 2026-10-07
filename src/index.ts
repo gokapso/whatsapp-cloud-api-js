@@ -5,6 +5,7 @@ export { MediaResource } from "./resources/media";
 export { TemplatesResource } from "./resources/templates";
 export { PhoneNumbersResource } from "./resources/phone-numbers";
 export { CallsResource } from "./resources/calls";
+export type { CallCaptureOptions, CallPermissionsInput } from "./resources/calls";
 export { ConversationsResource } from "./resources/conversations";
 export { ContactsResource } from "./resources/contacts";
 export { FlowsResource } from "./resources/flows";

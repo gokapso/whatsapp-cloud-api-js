@@ -350,7 +350,15 @@ export interface CallPermissionsResponse {
 }
 
 export interface CallRecord {
+  /** Kapso local UUID; use callId for calls.get(). */
   id: string;
+  /** Meta call identifier (wacid). */
+  callId?: string;
+  phoneNumberId?: string;
+  businessScopedUserId?: string;
+  parentBusinessScopedUserId?: string;
+  username?: string;
+  whatsappConfigId?: string;
   direction?: string;
   status?: string;
   durationSeconds?: number;
