@@ -20,3 +20,27 @@ export function verifySignature({ appSecret, rawBody, signatureHeader }: { appSe
     return false;
   }
 }
+
+
+/**
+ * Verify Kapso's X-Webhook-Signature: a bare hex HMAC-SHA256 over raw request bytes.
+ * Use the webhook secret, before parsing JSON. Invalid inputs return false.
+ * Direct Meta webhooks must continue to use verifySignature instead.
+ * @category Webhooks
+ */
+export function verifyKapsoWebhookSignature(input: {
+  secret: string;
+  rawBody: Buffer | Uint8Array | string;
+  signatureHeader?: string;
+}): boolean {
+  try {
+    const { secret, rawBody, signatureHeader } = input;
+    if (typeof secret !== "string" || !secret || typeof signatureHeader !== "string" ||
+        !/^[a-fA-F0-9]{64}$/.test(signatureHeader)) return false;
+    if (typeof rawBody !== "string" && !(rawBody instanceof Uint8Array)) return false;
+    const expected = createHmac("sha256", secret).update(rawBody).digest();
+    return timingSafeEqual(Buffer.from(signatureHeader, "hex"), expected);
+  } catch {
+    return false;
+  }
+}

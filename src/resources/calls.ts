@@ -3,6 +3,8 @@ import type { RecipientAddress } from "./messages/base";
 import type { WhatsAppClient } from "../client";
 import { assertKapsoProxy } from "./shared";
 import type {
+  CallArtifactKind,
+  CallDetailsResponse,
   CallActionResponse,
   CallConnectResponse,
   CallListResponse,
@@ -193,6 +195,20 @@ export class CallsResource {
       });
     }
   };
+
+  /** Fetch camelized detail and artifact availability by Kapso's local UUID. @category Calls */
+  async details(input: { callUuid: string }): Promise<CallDetailsResponse> {
+    return this.client.requestKapsoCall<CallDetailsResponse>({ callUuid: input.callUuid }, "json");
+  }
+
+  /**
+   * Fetch audio, transcript preview JSON, or original bytes (download=true).
+   * Returns an unconsumed Response for streaming. No webhook/CDN URL is followed.
+   * @category Calls
+   */
+  async fetchArtifact(input: { callUuid: string; kind: CallArtifactKind; download?: boolean }): Promise<Response> {
+    return this.client.requestKapsoCall({ callUuid: input.callUuid, artifact: { kind: input.kind, download: input.download } });
+  }
 
   async list(input: z.infer<typeof listSchema>): Promise<CallListResponse> {
     assertKapsoProxy(this.client, "Calls history API");

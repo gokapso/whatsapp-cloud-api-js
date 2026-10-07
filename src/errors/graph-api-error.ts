@@ -6,6 +6,7 @@ import type { ErrorCategory, ErrorCode, GraphApiErrorParams, GraphErrorEnvelope,
 export class GraphApiError extends Error {
   readonly httpStatus: number;
   readonly code: ErrorCode;
+  readonly apiCode?: string;
   readonly type: string;
   readonly details?: string;
   readonly errorSubcode?: number;
@@ -20,6 +21,7 @@ export class GraphApiError extends Error {
     this.name = "GraphApiError";
     this.httpStatus = params.httpStatus;
     this.code = params.code;
+    this.apiCode = params.apiCode;
     this.type = params.type;
     this.details = params.details;
     this.errorSubcode = params.errorSubcode;
@@ -38,6 +40,7 @@ export class GraphApiError extends Error {
     if (isGraphErrorEnvelope(camelBody)) {
       const errorPayload = camelBody.error;
       const code = typeof errorPayload.code === "number" ? errorPayload.code : httpStatus;
+      const apiCode = typeof errorPayload.code === "string" ? errorPayload.code : undefined;
       const type = errorPayload.type ?? GraphApiError.name;
       const details = typeof errorPayload.errorData?.details === "string" ? errorPayload.errorData.details : undefined;
       const category = categorizeErrorCode(
@@ -56,6 +59,7 @@ export class GraphApiError extends Error {
         message,
         httpStatus,
         code,
+        apiCode,
         type,
         details,
         errorSubcode: errorPayload.errorSubcode,
@@ -124,6 +128,7 @@ export class GraphApiError extends Error {
       message: this.message,
       httpStatus: this.httpStatus,
       code: this.code,
+      ...(this.apiCode !== undefined ? { apiCode: this.apiCode } : {}),
       type: this.type,
       details: this.details,
       errorSubcode: this.errorSubcode,

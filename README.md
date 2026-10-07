@@ -771,6 +771,59 @@ await client.calls.permissions.get({ phoneNumberId, recipient: "US.1349120865530
 Their typed `callRecording.audio` and `callTranscript.document` include media
 metadata. A BSUID-only event can omit `from`.
 
+### Kapso signatures and native call artifacts
+
+Use `verifyKapsoWebhookSignature` for Kapso's bare-hex `X-Webhook-Signature`, using
+the webhook secret and the original raw bytes. Use the existing `verifySignature`
+for direct Meta `X-Hub-Signature-256` headers (`sha256=…`).
+
+Call history uses Meta `callId` (`wacid.…`); the app detail/artifact API uses
+Kapso's local `callUuid` (`calls.get(...).id`). `details` returns camelized
+`{ data: { ...call, artifacts: { recording, transcription } } }`. Each summary
+has a `state` (`absent`, `available`, `expired`) and optional media metadata.
+`fetchArtifact` returns the raw, unconsumed `Response`: recording is inline audio,
+transcription is `{ data: preview }` JSON, and `download: true` returns original
+attachment bytes for either kind. Stream or parse that response as appropriate.
+
+```ts
+import { WhatsAppClient, GraphApiError } from "@kapso/whatsapp-cloud-api";
+import { verifyKapsoWebhookSignature, normalizeWebhook, isCallArtifactEvent } from "@kapso/whatsapp-cloud-api/server";
+
+const client = new WhatsAppClient({ kapsoApiKey, baseUrl: "https://api.kapso.ai/meta/whatsapp" });
+if (!verifyKapsoWebhookSignature({ secret: webhookSecret, rawBody, signatureHeader })) {
+  throw new Error("Invalid Kapso webhook signature");
+}
+const webhook = normalizeWebhook(JSON.parse(rawBody.toString("utf8")));
+for (const event of webhook.calls) {
+  if (!isCallArtifactEvent(event) || !event.callId || !webhook.phoneNumberId) continue;
+  const call = await client.calls.get({ phoneNumberId: webhook.phoneNumberId, callId: event.callId });
+  if (!call) continue;
+  const { data: detail } = await client.calls.details({ callUuid: call.id });
+  const kind = event.event === "call_recording_available" ? "recording" : "transcription";
+  if (detail.artifacts[kind].state !== "available") continue;
+  try {
+    const response = await client.calls.fetchArtifact({ callUuid: call.id, kind });
+    // Consume response.body for audio; await response.json() for transcript preview.
+  } catch (error) {
+    if (error instanceof GraphApiError && error.apiCode === "artifact_expired") continue;
+    throw error;
+  }
+}
+```
+
+These helpers send only `X-API-Key` to `https://app.kapso.ai/api/v1`; a Meta-token-only
+client fails before fetch. Custom proxy deployments must set `kapsoAppBaseUrl` to
+their trusted HTTPS app origin (no path). Meta bearer tokens are never attached to
+app requests and redirects are rejected to keep the key on that origin. Helpers
+construct fixed paths rather than using webhook URLs or summary `fetchPath`.
+They neither archive artifacts nor send Range headers. Backend errors preserve
+the numeric `GraphApiError.code`/`httpStatus` and expose structured codes (such as
+`artifact_expired`, `artifact_unavailable`, `artifact_too_large`,
+`artifact_invalid_transcript`, `artifact_download_failed`) as `apiCode`.
+
+Tests use offline fixtures and packed builds. They verify protocol and package
+behavior; they do not prove production availability or native handset capture.
+
 ## License
 
 MIT

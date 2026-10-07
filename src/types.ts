@@ -369,6 +369,37 @@ export interface CallRecord {
   [key: string]: unknown;
 }
 
+/** Native artifact types exposed by the Kapso app API. @category Calls */
+export type CallArtifactKind = "recording" | "transcription";
+
+/** Availability metadata, not stored artifact bytes. @category Calls */
+export type CallArtifactSummary = {
+  state: "absent" | "available" | "expired";
+  mediaId?: string;
+  mimeType?: string;
+  sha256?: string;
+  receivedAt?: string;
+  expiresAt?: string;
+  /** Relative app API path, for display; fetchArtifact constructs its own trusted path. */
+  fetchPath?: string;
+};
+
+/** External call detail from the app API; id is a Kapso UUID. @category Calls */
+export type CallDetails = CallRecord & {
+  artifacts: Record<CallArtifactKind, CallArtifactSummary>;
+  projectId?: string;
+  voiceAgentId?: string | null;
+  voiceAgentName?: string | null;
+  configDisplayName?: string | null;
+  configDisplayPhoneNumber?: string | null;
+  userWaId?: string | null;
+  sessionStartedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CallDetailsResponse = { data: CallDetails };
+
 export type CallListResponse = PagedResponse<CallRecord>;
 
 /** Standard Graph error envelope (camelCase variant). */

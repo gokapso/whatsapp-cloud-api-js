@@ -1,4 +1,4 @@
-export { verifySignature } from "./webhooks/verify";
+export { verifySignature, verifyKapsoWebhookSignature } from "./webhooks/verify";
 export { normalizeWebhook, isCallArtifactEvent } from "./webhooks/normalize";
 export {
   receive as receiveFlowEvent,
