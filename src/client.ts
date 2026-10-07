@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { KapsoProxyRequiredError } from "./errors";
+import type { CallArtifactKind } from "./types";
 import { MessagesResource } from "./resources/messages";
 import { MediaResource } from "./resources/media";
 import { TemplatesResource } from "./resources/templates";
@@ -20,6 +23,8 @@ export interface WhatsAppClientConfig {
   kapsoApiKey?: string;
   /** Base URL to use instead of the Meta Graph API */
   baseUrl?: string;
+  /** App API origin for call artifacts. Required for custom proxy hosts; defaults to https://app.kapso.ai for Kapso. */
+  kapsoAppBaseUrl?: string;
   /** Graph API version (default: v23.0) */
   graphVersion?: string;
   /** Custom fetch implementation (useful for tests and non-Node runtimes) */
@@ -39,6 +44,17 @@ export interface RequestOptions {
 }
 
 const DEFAULT_BASE_URL = "https://graph.facebook.com";
+const DEFAULT_KAPSO_APP_BASE_URL = "https://app.kapso.ai";
+const appCallSchema = z.object({
+  callUuid: z.string().uuid("callUuid must be a Kapso local UUID; resolve it with calls.get({ phoneNumberId, callId }).id, not a Meta wacid."),
+  artifact: z.object({
+    kind: z.enum(["recording", "transcription"]),
+    download: z.boolean().optional()
+  }).optional()
+});
+
+type AppCallRequest = { callUuid: string; artifact?: { kind: CallArtifactKind; download?: boolean } };
+
 const DEFAULT_GRAPH_VERSION = "v23.0";
 
 /**
@@ -61,6 +77,7 @@ export class WhatsAppClient {
   private readonly kapsoApiKey?: string;
   private readonly baseUrl: string;
   private readonly graphVersion: string;
+  private readonly kapsoAppBaseUrl?: string;
   private readonly fetchImpl: typeof fetch;
   private readonly kapsoProxy: boolean;
 
@@ -72,6 +89,10 @@ export class WhatsAppClient {
     this.accessToken = config.accessToken;
     this.kapsoApiKey = config.kapsoApiKey;
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE_URL);
+    this.kapsoAppBaseUrl = config.kapsoAppBaseUrl ?? (
+      config.baseUrl === undefined || isDefaultKapsoHost(this.baseUrl)
+        ? DEFAULT_KAPSO_APP_BASE_URL : undefined
+    );
     this.graphVersion = config.graphVersion ?? DEFAULT_GRAPH_VERSION;
     this.kapsoProxy = detectKapsoProxy(this.baseUrl, this.kapsoApiKey);
     this.fetchImpl = config.fetch ?? globalThis.fetch;
@@ -133,6 +154,33 @@ export class WhatsAppClient {
       return parseJsonResponse(response);
     }
 
+    return response;
+  }
+
+  /** @internal Scoped app request used by CallsResource; never accepts webhook URLs or fetch paths. */
+  async requestKapsoCall<T>(input: AppCallRequest, responseType: "json"): Promise<T>;
+  async requestKapsoCall(input: AppCallRequest): Promise<Response>;
+  async requestKapsoCall(input: AppCallRequest, responseType?: "json"): Promise<unknown> {
+    if (!this.kapsoApiKey) throw new KapsoProxyRequiredError("Call artifacts API (requires kapsoApiKey)");
+    const { callUuid, artifact } = appCallSchema.parse(input);
+    if (!this.kapsoAppBaseUrl) {
+      throw new Error("Set kapsoAppBaseUrl to the trusted app API origin when using a custom proxy host.");
+    }
+    const appBase = new URL(this.kapsoAppBaseUrl);
+    if (appBase.protocol !== "https:" || appBase.username || appBase.password ||
+        appBase.pathname !== "/" || appBase.search || appBase.hash) {
+      throw new Error("kapsoAppBaseUrl must be an HTTPS origin without credentials, path, query, or fragment.");
+    }
+    const path = `/api/v1/whatsapp_calls/${callUuid}${artifact ? `/artifacts/${artifact.kind}` : ""}`;
+    const url = new URL(path, appBase);
+    if (artifact?.download === true) url.searchParams.set("download", "true");
+    const response = await this.fetchImpl(url.toString(), {
+      method: "GET",
+      headers: { "X-API-Key": this.kapsoApiKey },
+      // Fetch retains custom auth headers on redirects. Reject rather than leaking the key off-host.
+      redirect: "error"
+    });
+    if (responseType === "json" || !response.ok) return parseJsonResponse(response);
     return response;
   }
 
@@ -237,4 +285,12 @@ function isFormData(value: unknown): value is FormData {
 
 function isBlob(value: unknown): value is Blob {
   return typeof Blob !== "undefined" && value instanceof Blob;
+}
+
+function isDefaultKapsoHost(baseUrl: string): boolean {
+  try {
+    return ["api.kapso.ai", "app.kapso.ai"].includes(new URL(baseUrl).hostname);
+  } catch {
+    return false;
+  }
 }

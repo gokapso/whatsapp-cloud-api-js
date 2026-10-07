@@ -185,7 +185,13 @@ describe("Calls API", () => {
     const { fetchMock, calls } = setupFetch({
       data: [
         {
-          id: "wacid.123",
+          id: "a29edbfe-f181-4a10-b3b0-0d2bb66e390b",
+          call_id: "wacid.123",
+          phone_number_id: "123",
+          whatsapp_config_id: "config-1",
+          business_scoped_user_id: "US.1",
+          parent_business_scoped_user_id: "US.2",
+          username: "caller",
           direction: "OUTBOUND",
           status: "FAILED"
         }
@@ -198,7 +204,32 @@ describe("Calls API", () => {
 
     expect(calls[0]?.url).toContain("/v23.0/123/calls?");
     expect(calls[0]?.url).toContain("call_id=wacid.123");
-    expect(call).toMatchObject({ id: "wacid.123", status: "FAILED" });
+    expect(call).toMatchObject({
+      id: "a29edbfe-f181-4a10-b3b0-0d2bb66e390b", callId: "wacid.123", status: "FAILED",
+      phoneNumberId: "123", whatsappConfigId: "config-1", businessScopedUserId: "US.1",
+      parentBusinessScopedUserId: "US.2", username: "caller"
+    });
+    expectTypeOf(call?.callId).toEqualTypeOf<string | undefined>();
+  });
+
+  it.each(["list", "get"] as const)("%s preserves explicit null identity fields for phone-only calls", async (action) => {
+    const { fetchMock } = setupFetch({
+      data: [{
+        id: "a29edbfe-f181-4a10-b3b0-0d2bb66e390b", call_id: "wacid.PHONE",
+        user_wa_id: "15551234567", business_scoped_user_id: null,
+        parent_business_scoped_user_id: null, username: null
+      }],
+      paging: { cursors: { before: null, after: null }, next: null, previous: null }
+    });
+    const client = new WhatsAppClient({ kapsoApiKey: "key", baseUrl: "https://api.kapso.ai/meta/whatsapp", fetch: fetchMock });
+    const call = action === "list"
+      ? (await client.calls.list({ phoneNumberId: "123" })).data[0]
+      : await client.calls.get({ phoneNumberId: "123", callId: "wacid.PHONE" });
+
+    expect(call).toMatchObject({ businessScopedUserId: null, parentBusinessScopedUserId: null, username: null });
+    expectTypeOf(call?.businessScopedUserId).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(call?.parentBusinessScopedUserId).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(call?.username).toEqualTypeOf<string | null | undefined>();
   });
 
   it("get returns undefined when call not found", async () => {
@@ -212,4 +243,69 @@ describe("Calls API", () => {
 
     expect(call).toBeUndefined();
   });
+
+  it.each(["connect", "accept"] as const)("%s forwards optional native capture in snake case", async (action) => {
+    const { fetchMock, calls } = setupFetch();
+    const client = new WhatsAppClient({ kapsoApiKey: "key", fetch: fetchMock });
+    const capture = { status: "ENABLED" as const, purpose: "quality assurance", announcementLanguage: "en_US" };
+    await client.calls[action]({ phoneNumberId: "123", to: "15551234567", callId: "wacid.123",
+      session: { sdpType: "answer", sdp: "v=0" }, recording: capture, transcription: capture });
+    expect(JSON.parse(String(calls[0]?.init.body))).toMatchObject({
+      recording: { status: "ENABLED", purpose: "quality assurance", announcement_language: "en_US" },
+      transcription: { status: "ENABLED", purpose: "quality assurance", announcement_language: "en_US" }
+    });
+  });
+
+  it.each(["connect", "accept"] as const)("%s leaves capture opt-in and allows DISABLED without announcement", async (action) => {
+    const { fetchMock, calls } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    const input = { phoneNumberId: "123", to: "15551234567", callId: "wacid.123", session: { sdpType: "answer", sdp: "v=0" } };
+    await client.calls[action](input);
+    expect(JSON.parse(String(calls[0]?.init.body))).not.toHaveProperty("recording");
+    expect(JSON.parse(String(calls[0]?.init.body))).not.toHaveProperty("transcription");
+    await client.calls[action]({ ...input, recording: { status: "DISABLED" }, transcription: { status: "DISABLED" } });
+    expect(JSON.parse(String(calls[1]?.init.body))).toMatchObject({ recording: { status: "DISABLED" }, transcription: { status: "DISABLED" } });
+  });
+
+  it.each(["connect", "accept"] as const)("%s rejects invalid capture before fetch", async (action) => {
+    const { fetchMock, calls } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    for (const key of ["recording", "transcription"]) {
+      for (const capture of [
+        { status: "ENABLED" },
+        { status: "ENABLED", purpose: "quality" },
+        { status: "ENABLED", announcementLanguage: "en_US" },
+        { status: "ENABLED", purpose: "", announcementLanguage: "en_US" },
+        { status: "ENABLED", purpose: "quality", announcementLanguage: "" },
+        { status: "ENABLED", purpose: "x".repeat(251), announcementLanguage: "en_US" },
+        { status: "UNKNOWN" }
+      ]) {
+        await expect(client.calls[action]({ phoneNumberId: "123", to: "15551234567", callId: "wacid.123",
+          session: { sdpType: "answer", sdp: "v=0" }, [key]: capture } as never)).rejects.toThrow();
+      }
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it.each(["recording", "transcription"])("preAccept rejects even an undefined %s key before fetch", async (key) => {
+    const { fetchMock, calls } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    for (const value of [undefined, { status: "DISABLED" }]) {
+      await expect(client.calls.preAccept({ phoneNumberId: "123", callId: "wacid.123",
+        session: { sdpType: "answer", sdp: "v=0" }, [key]: value } as never)).rejects.toThrow(/capture options apply to connect\/accept only/i);
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it("permissions.get supports BSUID and rejects both or neither address", async () => {
+    const { fetchMock, calls } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+    await client.calls.permissions.get({ phoneNumberId: "123", recipient: "US.13491208655302741918" });
+    expect(calls[0]?.url).toBe("https://graph.facebook.com/v23.0/123/call_permissions?recipient=US.13491208655302741918");
+    for (const address of [{}, { userWaId: "15551234567", recipient: "US.1" }]) {
+      await expect(client.calls.permissions.get({ phoneNumberId: "123", ...address } as never)).rejects.toThrow();
+    }
+    expect(calls).toHaveLength(1);
+  });
+
 });

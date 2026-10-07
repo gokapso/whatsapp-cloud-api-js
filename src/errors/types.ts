@@ -92,7 +92,7 @@ export interface GraphErrorData {
 export interface GraphErrorPayload {
   message?: string;
   type?: string;
-  code?: ErrorCode;
+  code?: ErrorCode | string;
   errorData?: GraphErrorData;
   errorSubcode?: number;
   fbtraceId?: string;
@@ -104,6 +104,8 @@ export interface GraphErrorEnvelope {
 }
 
 export interface GraphApiErrorParams extends GraphErrorPayload {
+  /** Structured Kapso API code, while code remains numeric for compatibility. */
+  apiCode?: string;
   httpStatus: number;
   category: ErrorCategory;
   retry: RetryHint;

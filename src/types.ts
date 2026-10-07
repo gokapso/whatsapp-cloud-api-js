@@ -350,7 +350,15 @@ export interface CallPermissionsResponse {
 }
 
 export interface CallRecord {
+  /** Kapso local UUID; use callId for calls.get(). */
   id: string;
+  /** Meta call identifier (wacid). */
+  callId?: string;
+  phoneNumberId?: string;
+  businessScopedUserId?: string | null;
+  parentBusinessScopedUserId?: string | null;
+  username?: string | null;
+  whatsappConfigId?: string;
   direction?: string;
   status?: string;
   durationSeconds?: number;
@@ -360,6 +368,37 @@ export interface CallRecord {
   whatsappContactId?: string;
   [key: string]: unknown;
 }
+
+/** Native artifact types exposed by the Kapso app API. @category Calls */
+export type CallArtifactKind = "recording" | "transcription";
+
+/** Availability metadata, not stored artifact bytes. @category Calls */
+export type CallArtifactSummary = {
+  state: "absent" | "available" | "expired";
+  mediaId?: string;
+  mimeType?: string | null;
+  sha256?: string | null;
+  receivedAt?: string;
+  expiresAt?: string;
+  /** Relative app API path, for display; fetchArtifact constructs its own trusted path. */
+  fetchPath?: string;
+};
+
+/** External call detail from the app API; id is a Kapso UUID. @category Calls */
+export type CallDetails = CallRecord & {
+  artifacts: Record<CallArtifactKind, CallArtifactSummary>;
+  projectId?: string;
+  voiceAgentId?: string | null;
+  voiceAgentName?: string | null;
+  configDisplayName?: string | null;
+  configDisplayPhoneNumber?: string | null;
+  userWaId?: string | null;
+  sessionStartedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CallDetailsResponse = { data: CallDetails };
 
 export type CallListResponse = PagedResponse<CallRecord>;
 
