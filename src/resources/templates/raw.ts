@@ -12,12 +12,15 @@ import type {
   TemplateButtonPhoneComponent,
   TemplateButtonQuickReplyComponent,
   TemplateButtonUrlComponent,
+  TemplateButtonVoiceCallComponent,
+  TemplateButtonParameterVoiceCall,
   TemplateCarouselComponent,
   TemplateHeaderComponent,
   TemplateHeaderParameter,
   TemplateComponent,
   TemplateSendPayload
 } from "./types";
+import { VOICE_CALL_PAYLOAD_MAX, VOICE_CALL_SEND_TTL_MINUTES } from "../../utils/voice-call";
 
 const rawComponentSchema = z.object({
   type: z.string().min(1),
@@ -154,6 +157,9 @@ function normalizeCarouselCard(card: unknown, path: string) {
       );
       if (normalized.type === "carousel") {
         throw new Error(`${path}.components[${index}].type 'carousel' is not supported inside carousel cards`);
+      }
+      if (normalized.type === "button" && normalized.subType === "voice_call") {
+        throw new Error(`${path}.components[${index}].sub_type 'voice_call' is not supported inside carousel cards`);
       }
       return normalized;
     })
@@ -378,6 +384,22 @@ function normalizeButtonComponent(component: Record<string, unknown>, path: stri
           };
       return result;
     }
+    case "voice_call": {
+      const params = normalizeVoiceCallParameters(parameters, path);
+      const result: TemplateButtonVoiceCallComponent = params
+        ? {
+            type: "button",
+            subType: "voice_call",
+            index: indexNumber,
+            parameters: params
+          }
+        : {
+            type: "button",
+            subType: "voice_call",
+            index: indexNumber
+          };
+      return result;
+    }
     default:
       throw new Error(`${path}.sub_type '${subType}' is not supported`);
   }
@@ -482,6 +504,50 @@ function normalizeButtonCopyCodeParameters(parameters: unknown, path: string): T
       coupon_code: code
     } satisfies TemplateButtonParameterCouponCode;
   }) as TemplateButtonParameterCouponCode[];
+}
+
+function normalizeVoiceCallParameters(parameters: unknown, path: string): TemplateButtonParameterVoiceCall[] | undefined {
+  if (parameters === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(parameters)) {
+    throw new Error(`${path}.parameters must be an array`);
+  }
+
+  const seen = new Set<string>();
+  return parameters.map((param: unknown, index) => {
+    const paramPath = `${path}.parameters[${index}]`;
+    if (!param || typeof param !== "object" || typeof (param as Record<string, unknown>).type !== "string") {
+      throw new Error(`${paramPath}.type is required`);
+    }
+    const cloned: Record<string, unknown> = { ...(param as Record<string, unknown>) };
+    const type = (cloned.type as string).toLowerCase();
+    cloned.type = type;
+    if (seen.has(type)) {
+      throw new Error(`${paramPath}.type '${type}' may appear only once`);
+    }
+    seen.add(type);
+
+    if (type === "ttl_minutes") {
+      const ttl = cloned.ttlMinutes ?? cloned.ttl_minutes;
+      if (typeof ttl !== "number" || !Number.isInteger(ttl) || ttl < VOICE_CALL_SEND_TTL_MINUTES.min || ttl > VOICE_CALL_SEND_TTL_MINUTES.max) {
+        throw new Error(
+          `${paramPath}.ttl_minutes must be an integer between ${VOICE_CALL_SEND_TTL_MINUTES.min} and ${VOICE_CALL_SEND_TTL_MINUTES.max}`
+        );
+      }
+      return cloned as TemplateButtonParameterVoiceCall;
+    }
+
+    if (type === "payload") {
+      const payload = ensureString(cloned.payload, `${paramPath}.payload`);
+      if (!payload.length || payload.length > VOICE_CALL_PAYLOAD_MAX) {
+        throw new Error(`${paramPath}.payload must be 1-${VOICE_CALL_PAYLOAD_MAX} characters`);
+      }
+      return cloned as TemplateButtonParameterVoiceCall;
+    }
+
+    throw new Error(`${paramPath}.type must be 'ttl_minutes' or 'payload'`);
+  });
 }
 
 function normalizeFlowParameters(parameters: unknown, path: string): TemplateButtonParameterFlow[] | undefined {

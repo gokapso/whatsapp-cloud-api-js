@@ -61,6 +61,14 @@ export interface NormalizedCallEvent {
   startTime?: number;
   endTime?: number;
   duration?: number;
+  /**
+   * payload from the call button (interactive or template) the user tapped.
+   * Meta sends it on connect and terminate events; clients need WhatsApp 2.25.27+.
+   * Distinct from bizOpaqueCallbackData.
+   */
+  ctaPayload?: string;
+  /** biz_payload from the calling deep link the user opened; same events and client version as ctaPayload. */
+  deeplinkPayload?: string;
   [key: string]: unknown;
 }
 

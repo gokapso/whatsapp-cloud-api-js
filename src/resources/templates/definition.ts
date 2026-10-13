@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { VOICE_CALL_DISPLAY_TEXT_MAX, VOICE_CALL_TEMPLATE_TTL_MINUTES } from "../../utils/voice-call";
 
 const NAME_REGEX = /^[a-z0-9_]{1,512}$/;
 const LANGUAGE_REGEX = /^[a-z]{2}(?:_[A-Z]{2})?$/;
@@ -276,6 +277,7 @@ type ButtonsComponent = {
         icon?: "DOCUMENT" | "PROMOTION" | "REVIEW";
       }
     | { type: "CATALOG"; text: string }
+    | { type: "VOICE_CALL" | "voice_call"; text?: string; ttlMinutes?: number }
     | { type: "MPM"; text: string }
     | { type: "SPM"; text: string }
     | {
@@ -333,6 +335,17 @@ const TemplateComponentSchema = z.union([
                 }
               }),
             z.object({ type: z.literal("CATALOG"), text: z.string().min(1).max(25) }),
+            // Meta's sample spells the type lowercase; uppercase matches the other button types.
+            z.object({
+              type: z.enum(["voice_call", "VOICE_CALL"]),
+              text: z.string().min(1).max(VOICE_CALL_DISPLAY_TEXT_MAX).optional(),
+              ttlMinutes: z
+                .number()
+                .int()
+                .min(VOICE_CALL_TEMPLATE_TTL_MINUTES.min)
+                .max(VOICE_CALL_TEMPLATE_TTL_MINUTES.max)
+                .optional()
+            }),
             z.object({ type: z.literal("MPM"), text: z.string().min(1).max(25) }),
             z.object({ type: z.literal("SPM"), text: z.string().min(1).max(25) }),
             z

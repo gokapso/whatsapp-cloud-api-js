@@ -26,6 +26,7 @@ import {
   AddressInteractiveInput,
   LocationRequestInteractiveInput,
   CallPermissionInteractiveInput,
+  VoiceCallInteractiveInput,
   RawInteractiveInput,
   CtaUrlInteractiveInput,
   CarouselInteractiveInput,
@@ -164,6 +165,15 @@ export class MessagesResource {
 
   async sendInteractiveCallPermission(input: CallPermissionInteractiveInput): Promise<SendMessageResponse> {
     return this.interactiveSender.sendCallPermissionRequest(input);
+  }
+
+  /**
+   * Send a free-form message with a WhatsApp call button (interactive type voice_call).
+   * Meta only accepts it inside a customer service or open conversation window;
+   * use a voice_call template button outside that window.
+   */
+  async sendInteractiveVoiceCall(input: VoiceCallInteractiveInput): Promise<SendMessageResponse> {
+    return this.interactiveSender.sendVoiceCall(input);
   }
 
   async sendInteractiveCtaUrl(input: CtaUrlInteractiveInput): Promise<SendMessageResponse> {

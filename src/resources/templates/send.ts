@@ -3,8 +3,10 @@ import type {
   TemplateCarouselCard,
   TemplateSendPayload,
   TemplateButtonComponent,
+  TemplateButtonVoiceCallComponent,
   TemplateComponent
 } from "./types";
+import { VOICE_CALL_PAYLOAD_MAX, VOICE_CALL_SEND_TTL_MINUTES } from "../../utils/voice-call";
 
 // Header parameters for sending a template
 const headerParamSchema = z.discriminatedUnion("type", [
@@ -110,6 +112,33 @@ const buttonFlowSchema = z.object({
     .optional()
 });
 
+// voice_call buttons stay out of carousel cards, which do not document them.
+const voiceCallButtonParameterSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("ttl_minutes"),
+    ttlMinutes: z.number().int().min(VOICE_CALL_SEND_TTL_MINUTES.min).max(VOICE_CALL_SEND_TTL_MINUTES.max)
+  }),
+  z.object({ type: z.literal("payload"), payload: z.string().min(1).max(VOICE_CALL_PAYLOAD_MAX) })
+]);
+
+export const voiceCallTemplateButtonSchema = z
+  .object({
+    type: z.literal("button"),
+    subType: z.literal("voice_call"),
+    index: z.union([z.number().int().min(0).max(9), z.string()]),
+    parameters: z.array(voiceCallButtonParameterSchema).min(1).max(2).optional()
+  })
+  .superRefine((value, ctx) => {
+    const types = (value.parameters ?? []).map((parameter) => parameter.type);
+    if (new Set(types).size !== types.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["parameters"],
+        message: "voice_call parameters may include ttl_minutes and payload at most once each"
+      });
+    }
+  });
+
 const buttonParamSchema = z.union([buttonQuickReplySchema, buttonUrlSchema, buttonPhoneSchema, buttonCopyCodeSchema, buttonFlowSchema]);
 
 const carouselCardComponentSchema = z.union([
@@ -135,7 +164,7 @@ export const templateSendInputSchema = z.object({
   header: headerParamSchema.optional(),
   body: z.array(bodyParamSchema).optional(),
   cards: z.array(carouselCardSchema).min(1).optional(),
-  buttons: z.array(buttonParamSchema).optional()
+  buttons: z.array(z.union([buttonParamSchema, voiceCallTemplateButtonSchema])).optional()
 });
 
 export type TemplateSendInput = z.infer<typeof templateSendInputSchema>;
@@ -173,4 +202,37 @@ export function buildTemplateSendPayload(input: TemplateSendInput): TemplateSend
     language: { code: parsed.language },
     components
   };
+}
+
+/** A voice_call button usable in buildTemplateSendPayload({ buttons }) and as a TemplateButtonComponent. */
+export type VoiceCallTemplateButton = z.infer<typeof voiceCallTemplateButtonSchema> & TemplateButtonVoiceCallComponent;
+
+export type VoiceCallTemplateButtonInput = {
+  /** Zero-based position of the voice_call button in the approved template. */
+  index: number | string;
+  /** Overrides the template's button lifetime, 1–43200 minutes (Meta default 10080). */
+  ttlMinutes?: number;
+  /** Tracking string, ≤ 512 characters, returned as cta_payload on call connect/terminate webhooks. */
+  payload?: string;
+};
+
+/**
+ * Build the send-time component for a template voice_call button.
+ * Pure: it validates and returns a component, it does not call any API.
+ * @category Templates
+ */
+export function buildVoiceCallTemplateButton(input: VoiceCallTemplateButtonInput): VoiceCallTemplateButton {
+  const parameters = [
+    ...(input.ttlMinutes !== undefined ? [{ type: "ttl_minutes" as const, ttlMinutes: input.ttlMinutes }] : []),
+    ...(input.payload !== undefined ? [{ type: "payload" as const, payload: input.payload }] : [])
+  ];
+
+  const parsed = voiceCallTemplateButtonSchema.parse({
+    type: "button",
+    subType: "voice_call",
+    index: input.index,
+    ...(parameters.length > 0 ? { parameters } : {})
+  });
+
+  return parsed;
 }

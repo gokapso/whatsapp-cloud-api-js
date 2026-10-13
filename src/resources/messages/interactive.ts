@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RecipientAddress, baseMessageSchema, buildBasePayload, MessageSendClient } from "./base";
+import { VOICE_CALL_DISPLAY_TEXT_MAX, VOICE_CALL_PAYLOAD_MAX, VOICE_CALL_SEND_TTL_MINUTES } from "../../utils/voice-call";
 
 const MAX_BODY_CHARS = 1024;
 const MAX_FOOTER_CHARS = 60;
@@ -145,6 +146,19 @@ const callPermissionMessageSchema = baseMessageSchema.extend({
   parameters: callPermissionParametersSchema
 });
 
+// Voice call button (interactive type voice_call). Meta limits: display_text ≤ 20,
+// ttl_minutes 1–43200 (Meta default 10080), payload ≤ 512 (returned as cta_payload).
+const voiceCallParametersSchema = z.object({
+  displayText: z.string().min(1).max(VOICE_CALL_DISPLAY_TEXT_MAX).optional(),
+  ttlMinutes: z.number().int().min(VOICE_CALL_SEND_TTL_MINUTES.min).max(VOICE_CALL_SEND_TTL_MINUTES.max).optional(),
+  payload: z.string().min(1).max(VOICE_CALL_PAYLOAD_MAX).optional()
+});
+
+const voiceCallMessageSchema = baseMessageSchema.extend({
+  bodyText: z.string().min(1).max(MAX_BODY_CHARS),
+  parameters: voiceCallParametersSchema.optional()
+});
+
 const flowParametersSchema = z.object({
   flowId: z.string().min(1),
   flowCta: z.string().min(1).max(MAX_BUTTON_LABEL),
@@ -176,6 +190,8 @@ export type FlowInteractiveInput = FlowMessageInput;
 export type AddressInteractiveInput = z.infer<typeof addressMessageSchema> & RecipientAddress;
 export type LocationRequestInteractiveInput = z.infer<typeof locationRequestMessageSchema> & RecipientAddress;
 export type CallPermissionInteractiveInput = z.infer<typeof callPermissionMessageSchema> & RecipientAddress;
+export type VoiceCallInteractiveParameters = z.infer<typeof voiceCallParametersSchema>;
+export type VoiceCallInteractiveInput = z.infer<typeof voiceCallMessageSchema> & RecipientAddress;
 export type RawInteractiveInput = {
   phoneNumberId: string;
   recipientType?: "individual" | "group";
@@ -578,6 +594,35 @@ export class InteractiveMessageSender {
     if (footer) {
       Object.assign(interactive, { footer });
     }
+
+    const payload = buildBasePayload(
+      { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
+      { type: "interactive", interactive }
+    );
+
+    return this.client.sendMessageRequest(phoneNumberId, payload);
+  }
+
+  // Voice call button: opens a WhatsApp call to the sending business number.
+  // Meta only accepts it inside a customer service or open conversation window.
+  async sendVoiceCall(input: VoiceCallInteractiveInput) {
+    const parsed = parseInput(voiceCallMessageSchema, input, "Voice call interactive message");
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, parameters } = parsed;
+
+    const builtParameters = {
+      ...(parameters?.displayText !== undefined ? { displayText: parameters.displayText } : {}),
+      ...(parameters?.ttlMinutes !== undefined ? { ttlMinutes: parameters.ttlMinutes } : {}),
+      ...(parameters?.payload !== undefined ? { payload: parameters.payload } : {})
+    };
+
+    const interactive: Record<string, unknown> = {
+      type: "voice_call",
+      body: { text: bodyText },
+      action: {
+        name: "voice_call",
+        ...(Object.keys(builtParameters).length > 0 ? { parameters: builtParameters } : {})
+      }
+    };
 
     const payload = buildBasePayload(
       { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData },
