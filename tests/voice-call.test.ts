@@ -240,6 +240,32 @@ describe("voice_call template sends", () => {
   });
 
   it.each([
+    { ttlMinutes: 100, ttl_minutes: 0 },
+    { ttl_minutes: 0, ttlMinutes: 100 }
+  ])("sends the validated TTL when both naming styles are present: %j", async (values) => {
+    const { client, requests } = setupClient();
+    const template = buildTemplatePayload({
+      name: "wa_voice_call",
+      language: "en",
+      components: [{
+        type: "button",
+        sub_type: "voice_call",
+        index: 0,
+        parameters: [{ type: "ttl_minutes", ...values }]
+      }]
+    });
+
+    await client.messages.sendTemplate({ phoneNumberId: "123", to: "14085551234", template });
+
+    expect((requests[0]?.body.template as Record<string, unknown>).components).toEqual([{
+      type: "button",
+      sub_type: "voice_call",
+      index: 0,
+      parameters: [{ type: "ttl_minutes", ttl_minutes: 100 }]
+    }]);
+  });
+
+  it.each([
     ["missing index", { type: "button", sub_type: "voice_call" }, /index is required/],
     ["ttl above 43200", { type: "button", sub_type: "voice_call", index: 0, parameters: [{ type: "ttl_minutes", ttl_minutes: 43201 }] }, /ttl_minutes must be an integer between 1 and 43200/],
     ["ttl below 1", { type: "button", sub_type: "voice_call", index: 0, parameters: [{ type: "ttl_minutes", ttlMinutes: 0 }] }, /ttl_minutes/],

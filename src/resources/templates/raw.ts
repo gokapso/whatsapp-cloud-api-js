@@ -535,6 +535,8 @@ function normalizeVoiceCallParameters(parameters: unknown, path: string): Templa
           `${paramPath}.ttl_minutes must be an integer between ${VOICE_CALL_SEND_TTL_MINUTES.min} and ${VOICE_CALL_SEND_TTL_MINUTES.max}`
         );
       }
+      delete cloned.ttlMinutes;
+      cloned.ttl_minutes = ttl;
       return cloned as TemplateButtonParameterVoiceCall;
     }
 

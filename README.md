@@ -356,7 +356,7 @@ events.calls.forEach((call) => {
 });
 ```
 
-Meta propagates both payloads only from WhatsApp clients on version 2.25.27 or later, so treat them as optional attribution. These payloads are separate from `bizOpaqueCallbackData`, which belongs to message status webhooks. The SDK tests check request shapes against Meta's documented samples. They do not send live calls or messages.
+Meta propagates both payloads only from WhatsApp clients on version 2.25.27 or later, so treat them as optional attribution. These payloads are separate from `bizOpaqueCallbackData`, which correlates message status and call termination webhooks. The SDK tests check request shapes against Meta's documented samples. They do not send live calls or messages.
 
 ## Business-scoped user IDs (BSUIDs)
 
