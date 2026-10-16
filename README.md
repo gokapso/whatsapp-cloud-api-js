@@ -264,6 +264,100 @@ await client.messages.sendInteractiveCatalogMessage({
 });
 ```
 
+## Call buttons and calling deep links
+
+These helpers invite a user to call your business number on WhatsApp. They only build or send messages; building a payload or a link never calls an API. The business number must have Cloud API calling enabled. Meta's [call button and deep link guide](https://developers.facebook.com/documentation/business-messaging/whatsapp/calling/call-button-messages-deep-links/) is the reference for this behavior.
+
+### Free-form call button
+
+Meta accepts this message only inside a customer service window or an open conversation window. To reach a user outside these windows, use a template with a `voice_call` button. `to`, `recipient` (BSUID), or both are accepted.
+
+```ts
+await client.messages.sendInteractiveVoiceCall({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  bodyText: "You can call us on WhatsApp now for faster service!",
+  parameters: {
+    displayText: "Call on WhatsApp", // optional, ≤ 20 characters (Meta default "Call Now")
+    ttlMinutes: 1440,                // optional, 1–43200 (Meta default 10080 = 7 days)
+    payload: "campaign=fall-2026",   // optional, ≤ 512 characters, returned as ctaPayload
+  },
+});
+```
+
+Users on WhatsApp versions without call button support cause Meta to send an error webhook with code `131026`.
+
+### Call button templates
+
+Creation uses a `voice_call` button. Creation `ttlMinutes` must be 1440–43200 (1–30 days). The button can share the template with URL buttons.
+
+```ts
+import { TemplateDefinition } from "@kapso/whatsapp-cloud-api";
+
+const definition = TemplateDefinition.buildTemplateDefinition({
+  name: "wa_voice_call",
+  language: "en",
+  category: "MARKETING",
+  components: [
+    { type: "BODY", text: "You can call us on WhatsApp now for faster service!" },
+    {
+      type: "BUTTONS",
+      buttons: [
+        { type: "voice_call", text: "Call Now", ttlMinutes: 1440 },
+        { type: "URL", text: "Contact Support", url: "https://example.com/support" },
+      ],
+    },
+  ],
+});
+
+await client.templates.create({ businessAccountId: "<WABA_ID>", ...definition });
+```
+
+At send time you can override the lifetime (1–43200 minutes) and attach a tracking payload (≤ 512 characters):
+
+```ts
+import { buildTemplateSendPayload, buildVoiceCallTemplateButton } from "@kapso/whatsapp-cloud-api";
+
+await client.messages.sendTemplate({
+  phoneNumberId: "<PHONE_NUMBER_ID>",
+  to: "+15551234567",
+  template: buildTemplateSendPayload({
+    name: "wa_voice_call",
+    language: "en",
+    buttons: [buildVoiceCallTemplateButton({ index: 0, ttlMinutes: 100, payload: "campaign=fall-2026" })],
+  }),
+});
+```
+
+The SDK builders require the button `index`, as for every other template button. Meta's own sample omits it; to send that exact shape, pass the raw template object to `messages.sendTemplate`.
+
+### Calling deep links
+
+`buildCallDeepLink` returns a `https://wa.me/call/<number>` link. Use it on a website, in an app, in a QR code, or in a message. It removes `+`, spaces, dashes and parentheses from the number and percent-encodes `payload` into `biz_payload`. It never shortens the link or makes a network call.
+
+```ts
+import { buildCallDeepLink } from "@kapso/whatsapp-cloud-api";
+
+buildCallDeepLink({ phoneNumber: "+1 (408) 555-1234", payload: "qr=lobby&floor=2" });
+// https://wa.me/call/14085551234?biz_payload=qr%3Dlobby%26floor%3D2
+```
+
+Use the business display phone number, not the phone number ID. Meta does not support calling deep links on WhatsApp desktop clients.
+
+### Tracking which button or link started a call
+
+On `connect` and `terminate` call webhooks, Meta returns the button `payload` as `cta_payload` and the deep link `biz_payload` as `deeplink_payload`. Your app must be subscribed to the `calls` webhook field. `normalizeWebhook` exposes them as `call.ctaPayload` and `call.deeplinkPayload`. Each field is absent when Meta does not send it.
+
+```ts
+events.calls.forEach((call) => {
+  if (call.event === "connect" || call.event === "terminate") {
+    console.log(call.callId, call.ctaPayload, call.deeplinkPayload);
+  }
+});
+```
+
+Meta propagates both payloads only from WhatsApp clients on version 2.25.27 or later, so treat them as optional attribution. These payloads are separate from `bizOpaqueCallbackData`, which correlates message status and call termination webhooks. The SDK tests check request shapes against Meta's documented samples. They do not send live calls or messages.
+
 ## Business-scoped user IDs (BSUIDs)
 
 Meta is replacing phone numbers as the way to identify WhatsApp users. Every user already has a business-scoped user ID (`US.13491208655302741918`), it arrives on every webhook, and for users who adopt a username the phone number eventually stops arriving.

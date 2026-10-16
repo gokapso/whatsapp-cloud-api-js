@@ -56,6 +56,14 @@ export type TemplateButtonParameterFlow = {
 };
 export type TemplateButtonParameterCouponCode = { type: "coupon_code"; coupon_code: string };
 
+/** Overrides the template's voice_call button lifetime; send range is 1–43200 minutes. */
+export type TemplateButtonParameterTtlMinutes =
+  | { type: "ttl_minutes"; ttlMinutes: number }
+  | { type: "ttl_minutes"; ttl_minutes: number };
+/** Tracking string (≤ 512 chars) returned as cta_payload on call connect/terminate webhooks. */
+export type TemplateButtonParameterVoiceCallPayload = { type: "payload"; payload: string };
+export type TemplateButtonParameterVoiceCall = TemplateButtonParameterTtlMinutes | TemplateButtonParameterVoiceCallPayload;
+
 export interface TemplateButtonQuickReplyComponent {
   type: "button";
   subType: "quick_reply";
@@ -98,15 +106,28 @@ export interface TemplateButtonCatalogComponent {
   parameters?: Array<Record<string, unknown>>;
 }
 
+/** Send-time overrides for a template voice_call button. */
+export interface TemplateButtonVoiceCallComponent {
+  type: "button";
+  subType: "voice_call";
+  index: number | string;
+  parameters?: TemplateButtonParameterVoiceCall[];
+}
+
 export type TemplateButtonComponent =
   | TemplateButtonQuickReplyComponent
   | TemplateButtonUrlComponent
   | TemplateButtonPhoneComponent
   | TemplateButtonCopyCodeComponent
   | TemplateButtonFlowComponent
-  | TemplateButtonCatalogComponent;
+  | TemplateButtonCatalogComponent
+  | TemplateButtonVoiceCallComponent;
 
-export type TemplateCarouselCardComponent = TemplateHeaderComponent | TemplateBodyComponent | TemplateButtonComponent;
+/** Carousel cards do not document voice_call buttons. */
+export type TemplateCarouselCardComponent =
+  | TemplateHeaderComponent
+  | TemplateBodyComponent
+  | Exclude<TemplateButtonComponent, TemplateButtonVoiceCallComponent>;
 
 export interface TemplateCarouselCard {
   cardIndex: number;
