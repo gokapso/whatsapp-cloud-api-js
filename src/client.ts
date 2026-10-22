@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isKapsoHost } from "./utils/hosts";
 import { KapsoProxyRequiredError } from "./errors";
 import type { CallArtifactKind } from "./types";
 import { MessagesResource } from "./resources/messages";
@@ -126,7 +127,8 @@ export class WhatsAppClient {
     const headers = this.buildHeaders(headerOverrides);
     const init: RequestInit = {
       method: method.toUpperCase(),
-      headers
+      headers,
+      redirect: "error"
     };
 
     if (body !== undefined && body !== null) {
@@ -227,9 +229,18 @@ export class WhatsAppClient {
   }
 
   private buildUrl(path: string, query?: Record<string, unknown>): string {
+    // Resource requests are relative to the configured API. Explicit absolute-URL
+    // requests belong to fetch(), whose caller deliberately chooses the destination.
+    if (/^[\s\u0000-\u0020]*[a-z][a-z\d+.-]*:/i.test(path) || /[\\\u0000-\u0020]/.test(path)) {
+      throw new TypeError("Resource path must be relative to the configured API");
+    }
     const cleanedPath = stripLeadingSlash(path);
     const base = `${this.baseUrl}/${this.graphVersion}/`;
     const url = new URL(cleanedPath, ensureTrailingSlash(base));
+    const trustedBase = new URL(ensureTrailingSlash(base));
+    if (url.origin !== trustedBase.origin || !url.pathname.startsWith(trustedBase.pathname)) {
+      throw new TypeError("Resource path must stay within the configured API");
+    }
 
     if (query) {
       const normalizedQuery = toSnakeCaseDeep(query);
@@ -273,7 +284,7 @@ function detectKapsoProxy(baseUrl: string, kapsoApiKey?: string): boolean {
 
   try {
     const url = new URL(baseUrl);
-    return url.hostname.endsWith("kapso.ai");
+    return isKapsoHost(url.hostname);
   } catch {
     return false;
   }

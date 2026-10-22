@@ -741,7 +741,7 @@ const src = msg?.kapso?.mediaUrl ?? msg?.image?.link; // use direct URL when pre
 
 2) Bytes fallback (universal)
 
-If you need the raw bytes or the URL has not been mirrored yet, use `download()`. The SDK automatically skips auth headers for public WhatsApp CDNs and uses them for Kapso hosts.
+If you need the raw bytes or the URL has not been mirrored yet, use `download()`. The SDK automatically skips auth headers for public WhatsApp CDNs and uses them for `kapso.ai` and its DNS subdomains. Media IDs must be IDs, not URLs or paths. Downloads require HTTPS URLs without embedded credentials; authenticated downloads reject redirects. Byte and Blob modes throw `GraphApiError` for HTTP failures; `as: "response"` returns the raw response, including non-2xx statuses, for caller inspection.
 
 Key points:
 - `client.media.download({ mediaId, ... })` resolves the short‑lived URL via `media.get()` then fetches the bytes.
@@ -812,7 +812,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
 
 ## Raw fetch helper
 
-Use `client.fetch(url, init?)` to make a request to any absolute URL with the client’s auth headers applied. Most users do not need this for media anymore because `media.download()` handles header policy automatically.
+Use `client.fetch(url, init?)` to make a request to any absolute URL with the client’s auth headers applied. Only pass trusted URLs: this low-level method intentionally allows absolute destinations and caller-selected redirect behavior. Use `redirect: "error"` to prevent forwarding custom auth headers through redirects. Resource `request()` calls are confined to the configured API and reject redirects. Most users do not need this for media anymore because `media.download()` handles header policy automatically.
 
 ```ts
 // Sends Authorization (Meta) or X-API-Key (Kapso) automatically
