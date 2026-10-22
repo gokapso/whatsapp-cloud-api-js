@@ -7,7 +7,7 @@ This guide walks through the full developer workflow for WhatsApp Flows using th
 - **CamelCase authoring:** Write JSON in idiomatic TS/JS; the SDK converts to Meta’s mixed casing automatically.
 - **Lifecycle helpers:** `client.flows.create/updateAsset/publish/deploy/preview/get/list` mirror the Graph API.
 - **DX-focused validation:** Meta errors come back camelized with hints when casing mistakes occur.
-- **Server utilities:** `receiveFlowEvent`, `respondToFlow`, and `downloadFlowMedia` handle encryption/HMAC, PhotoPicker/DocumentPicker payloads, and camelCase normalization.
+- **Server utilities:** `receiveFlowEvent` and `respondToFlow` handle native Meta callback encryption and camelCase normalization. `downloadFlowMedia` separately handles PhotoPicker/DocumentPicker media encryption/HMAC.
 
 ## 1. Author Flow JSON (camelCase)
 
@@ -115,61 +115,42 @@ await client.flows.list({ wabaId, limit: 20 });
 
 ## 4. Handle Data Endpoint requests
 
-When Meta calls your Data Endpoint, use `receiveFlowEvent` to decrypt the payload and normalize it to camelCase, and `respondToFlow` to send the next screen data.
+Native callbacks use `encrypted_aes_key`, `encrypted_flow_data`, and `initial_vector`. The Node.js server helper verifies `X-Hub-Signature-256` over the original request bytes, decrypts the AES key with RSA-OAEP/SHA-256, and authenticates the payload with AES-128-GCM. Pass the returned context to `respondToFlow` to encrypt the response using the same AES key and inverted IV, as required by [Meta's official endpoint sample](https://github.com/WhatsApp/WhatsApp-Flows-Tools/blob/main/examples/endpoint/nodejs/basic/src/encryption.js).
 
-### Express example
+Configure the matching Flow private key and Meta app secret on your server. Provide `verifyToken` to validate the decrypted token against your application's trusted session store, including number/user binding and expiration. Encryption and a valid Meta signature do not authorize business actions. Health-check `ping` callbacks do not carry a token; they are signature-verified and returned as `ctx.action === "PING"`.
 
 ```ts
 import express from "express";
-import { receiveFlowEvent, respondToFlow } from "@kapso/whatsapp-cloud-api/server";
+import { receiveFlowEvent, respondToFlow, FlowServerError } from "@kapso/whatsapp-cloud-api/server";
+import { authenticateFlowToken } from "./your-flow-session-store";
 
 const app = express();
-const phoneNumberId = process.env.PHONE_ID!;
-const flowKey = process.env.FLOW_PRIVATE_KEY_PEM!;
-
 app.post("/flows/csat", express.raw({ type: "*/*" }), async (req, res) => {
   try {
     const ctx = await receiveFlowEvent({
       rawBody: req.body as Buffer,
-      phoneNumberId,
-      getPrivateKey: async () => flowKey
+      headers: req.headers,
+      phoneNumberId: process.env.PHONE_ID!,
+      appSecret: process.env.META_APP_SECRET!,
+      getPrivateKey: async () => process.env.FLOW_PRIVATE_KEY_PEM!,
+      verifyToken: authenticateFlowToken
     });
-
-    if (ctx.action === "COMPLETE") {
-      console.log("CSAT rating:", ctx.form.rating);
-      const reply = respondToFlow({ screen: ctx.screen, data: {} });
-      return res.status(reply.status).set(reply.headers).send(reply.body);
-    }
-
-    const reply = respondToFlow({ screen: ctx.screen, data: {} });
+    const reply = ctx.action === "PING"
+      ? respondToFlow({ context: ctx, data: { status: "active" } })
+      : respondToFlow({ context: ctx, screen: "NEXT_SCREEN", data: {} });
     res.status(reply.status).set(reply.headers).send(reply.body);
   } catch (error) {
-    if (error instanceof Error && "status" in error) {
-      const flowError = error as any;
-      return res.status(flowError.status).set(flowError.headers).send(flowError.body);
+    if (error instanceof FlowServerError) {
+      return res.status(error.status).set(error.headers).send(error.body);
     }
-    res.status(500).send({ error: "Unexpected error" });
+    res.status(500).send();
   }
 });
 ```
 
-### Edge / standard Fetch handler
+Migration: plaintext input is rejected in the default Meta mode. An adapter that already authenticates and decrypts requests can explicitly pass `inputFormat: "decrypted"`; `verifyToken` is still required. This mode returns plaintext JSON responses. Do not expose it directly to untrusted callers. The old `encrypted_flow_data` plus `encryption_metadata` format was a media-envelope format and is no longer accepted as a callback. Media descriptors continue to work with `downloadFlowMedia` below.
 
-```ts
-import { receiveFlowEvent, respondToFlow } from "@kapso/whatsapp-cloud-api/server";
-
-export default async function handler(request: Request) {
-  const buffer = new Uint8Array(await request.arrayBuffer());
-  const ctx = await receiveFlowEvent({
-    rawBody: buffer,
-    phoneNumberId: process.env.PHONE_ID!,
-    getPrivateKey: async () => process.env.FLOW_PRIVATE_KEY_PEM!
-  });
-
-  const reply = respondToFlow({ screen: ctx.screen, data: {} });
-  return new Response(reply.body, { status: reply.status, headers: reply.headers });
-}
-```
+The server helpers require Node.js crypto; they are not Edge-runtime helpers. Keep the original `ctx` object for the encrypted response. `respondToFlow` without a native callback context remains a JSON builder for trusted adapters. Unsupported actions and non-object input return 400; invalid signatures return 432; failed decryption returns 421; rejected tokens return an encrypted 427 response. Missing key/secret/token-verifier configuration returns 500.
 
 ## 5. Decrypt PhotoPicker/DocumentPicker media
 
@@ -224,7 +205,7 @@ Use these hints to fix your camelCase authoring quickly.
 
 - Flow JSON authored in camelCase (`dataApiVersion`, `routingModel`, `onClickAction`, etc.).
 - Data Endpoint responds within 10 seconds (Meta timeout).
-- Handle `FlowServerError` statuses: 421 (decrypt error), 432 (signature/HMAC), 427 (invalid flow token).
+- Handle `FlowServerError` statuses: 421 (decrypt error), 432 (request signature), 427 (invalid flow token).
 - Refresh Flow private key when rotating phone numbers.
 - Log `ctx.action`, `ctx.screen`, and timing for observability (recommended).
 
