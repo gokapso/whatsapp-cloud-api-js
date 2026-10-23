@@ -450,21 +450,36 @@ describe("Messages resource", () => {
       phoneNumberId: "123",
       to: "15551234567",
       bodyText: "Share your location",
+      footerText: "Used for delivery only"
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody.type).toBe("interactive");
+    // Meta's payload has no action.parameters; the action must be exactly { name }.
+    expect(parsedBody.interactive).toEqual({
+      type: "location_request_message",
+      body: { text: "Share your location" },
+      footer: { text: "Used for delivery only" },
+      action: { name: "send_location" }
+    });
+  });
+
+  it("ignores the deprecated location request parameters instead of sending them", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveLocationRequest({
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Share your location",
       parameters: {
         requestMessage: "We need your location"
       }
     });
 
     const parsedBody = JSON.parse(String(responses[0]?.init.body));
-    expect(parsedBody).toMatchObject({
-      type: "interactive",
-      interactive: {
-        type: "location_request_message",
-        action: {
-          name: "send_location"
-        }
-      }
-    });
+    expect(parsedBody.interactive.action).toEqual({ name: "send_location" });
+    expect(parsedBody.interactive.action).not.toHaveProperty("parameters");
   });
 
   it("sends a call permission request interactive message", async () => {
