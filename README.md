@@ -924,3 +924,10 @@ behavior; they do not prove production availability or native handset capture.
 ## License
 
 MIT
+
+
+## Upgrading to 0.4.0
+
+This release combines the call-artifact and voice-call features in `CHANGELOG.md` with resource/media and native Flow changes. Resource paths are confined to the configured API/version; media IDs cannot be URLs or paths, and resource requests/media downloads reject redirects. Byte/Blob download HTTP errors now throw; `as: "response"` remains raw. Deliberate low-level `client.fetch` / `client.rawFetch` absolute-URL behavior remains available only for trusted destinations.
+
+Native Flow handlers must forward the original raw body and headers, configure `appSecret` and the matching RSA private key, and provide `verifyToken` for business actions. Pass the original returned context to `respondToFlow` once. Authorize `ctx.action` before business effects and enforce replay/idempotency in your own session store. Trusted pre-decrypted adapters explicitly use `inputFormat: "decrypted"`. See [the packaged Flow guide](docs/flows.md) for examples and error statuses.

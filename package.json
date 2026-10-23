@@ -61,7 +61,9 @@
     "node": ">=20.19"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md",
+    "docs/flows.md"
   ],
   "publishConfig": {
     "access": "public"
