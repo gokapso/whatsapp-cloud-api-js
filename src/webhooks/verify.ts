@@ -44,3 +44,20 @@ export function verifyKapsoWebhookSignature(input: {
     return false;
   }
 }
+
+/**
+ * Sign a raw webhook body the way Kapso does: a bare hex HMAC-SHA256 over the
+ * exact bytes. The inverse of {@link verifyKapsoWebhookSignature}, for tests,
+ * fixtures and replay tooling. Throws on invalid arguments.
+ * @category Webhooks
+ */
+export function signKapsoWebhook(input: { secret: string; rawBody: Buffer | Uint8Array | string }): string {
+  if (!input || typeof input.secret !== "string" || !input.secret) {
+    throw new TypeError("signKapsoWebhook: secret must be a non-empty string");
+  }
+  const { rawBody } = input;
+  if (typeof rawBody !== "string" && !(rawBody instanceof Uint8Array)) {
+    throw new TypeError("signKapsoWebhook: rawBody must be a string, Buffer or Uint8Array");
+  }
+  return createHmac("sha256", input.secret).update(rawBody).digest("hex");
+}

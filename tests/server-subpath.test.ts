@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 // Import from the server-only subpath in source. The built package will expose
 // this as "@kapso/whatsapp-cloud-api/server".
-import { normalizeWebhook, verifySignature } from "../src/server";
+import { normalizeWebhook, signKapsoWebhook, verifySignature } from "../src/server";
 
 describe("Server subpath", () => {
   it("exports verifySignature function", () => {
@@ -11,6 +11,10 @@ describe("Server subpath", () => {
 
   it("exports normalizeWebhook helper", () => {
     expect(typeof normalizeWebhook).toBe("function");
+  });
+
+  it("exports signKapsoWebhook", () => {
+    expect(typeof signKapsoWebhook).toBe("function");
   });
 
   it("validates a known signature", () => {
