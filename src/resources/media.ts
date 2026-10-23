@@ -1,5 +1,7 @@
 import type { Buffer } from "node:buffer";
 import { z } from "zod";
+import { isKapsoHost } from "../utils/hosts";
+import { parseJsonResponse } from "./shared";
 import type { WhatsAppClient } from "../client";
 import type { GraphSuccessResponse, MediaMetadataResponse, MediaUploadResponse } from "../types";
 
@@ -15,7 +17,7 @@ const uploadSchema = z.object({
 });
 
 const getSchema = z.object({
-  mediaId: z.string().min(1, "mediaId is required"),
+  mediaId: z.string().regex(/^[A-Za-z0-9_-]+$/, "mediaId must be an ID, not a URL or path"),
   phoneNumberId: z.string().min(1).optional()
 });
 
@@ -81,7 +83,9 @@ export class MediaResource {
 
   /**
    * Download media bytes for a given mediaId.
-   * - Uses {@link get} to resolve the short-lived URL, then performs a raw fetch with client auth headers.
+   * - Uses {@link get} to resolve an HTTPS URL. Auto auth applies only to Kapso DNS hosts.
+   * - Downloads reject redirects. Byte/Blob modes throw on HTTP errors.
+   * - `as: "response"` preserves the raw response, including unsuccessful statuses.
    * - Set `as` to control the return type. Defaults to `arrayBuffer`.
    */
   async download(input: GetInput & { headers?: Record<string, string>; as?: "arrayBuffer" | "blob" | "response"; auth?: "auto" | "never" | "always" }): Promise<ArrayBuffer | Blob | Response> {
@@ -94,8 +98,10 @@ export class MediaResource {
     const metadata = await this.get({ mediaId: parsed.mediaId, phoneNumberId: parsed.phoneNumberId });
     const targetUrl = metadata.downloadUrl ?? metadata.url;
     const url = new URL(targetUrl);
-    const host = url.hostname.toLowerCase();
-    const isKapsoHost = host.endsWith("kapso.ai");
+    if (url.protocol !== "https:" || url.username || url.password) {
+      throw new TypeError("Media download URL must use HTTPS without credentials");
+    }
+    const trustedHost = isKapsoHost(url.hostname);
     const authMode = input.auth ?? "auto";
     const clientWithFetch = this.client as unknown as WhatsAppClient & {
       fetch: (url: string, init?: RequestInit & { headers?: Record<string, string> }) => Promise<Response>;
@@ -104,20 +110,17 @@ export class MediaResource {
 
     // Decide whether to attach auth headers when fetching the media URL
     let res: Response;
-    const wantAuth = authMode === "always" || (authMode === "auto" && isKapsoHost);
+    const wantAuth = authMode === "always" || (authMode === "auto" && trustedHost);
 
     if (wantAuth) {
-      res = await clientWithFetch.fetch(targetUrl, { headers: input.headers });
+      res = await clientWithFetch.fetch(targetUrl, { headers: input.headers, redirect: "error" });
     } else {
       // No auth headers for public CDNs (e.g., lookaside.cdnwhatsapp.net)
-      res = await clientWithFetch.rawFetch(targetUrl, { headers: input.headers });
-      // Safety net: if Kapso host signals 401/403 and auto mode, retry once with auth
-      if ((res.status === 401 || res.status === 403) && authMode === "auto" && isKapsoHost) {
-        res = await clientWithFetch.fetch(targetUrl, { headers: input.headers });
-      }
+      res = await clientWithFetch.rawFetch(targetUrl, { headers: input.headers, redirect: "error" });
     }
 
     if (input.as === "response") return res;
+    if (!res.ok) await parseJsonResponse(res);
     if (input.as === "blob") return res.blob();
     return res.arrayBuffer();
   }

@@ -1,6 +1,7 @@
 import { GraphApiError } from "../errors";
 import { KapsoProxyRequiredError } from "../errors";
 import { toCamelCaseDeep } from "../utils/case";
+import { isKapsoHost } from "../utils/hosts";
 
 export async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -56,7 +57,7 @@ function inferKapsoFromBaseUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return false;
   try {
     const host = new URL(baseUrl).hostname;
-    return host.endsWith("kapso.ai");
+    return isKapsoHost(host);
   } catch {
     return false;
   }

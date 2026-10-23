@@ -1,4 +1,6 @@
-import { createDecipheriv, createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { constants, createCipheriv, createDecipheriv, createHash, createHmac, createPrivateKey, KeyObject, privateDecrypt, timingSafeEqual } from "node:crypto";
+import type { JsonWebKey as NodeJsonWebKey, webcrypto } from "node:crypto";
+import { verifySignature } from "../webhooks/verify";
 import { fromFlowJsonWireCase } from "../utils/flow-json";
 import { isPlainObject } from "../utils/case";
 
@@ -6,12 +8,17 @@ export interface FlowReceiveOptions {
   rawBody: Uint8Array | Buffer;
   headers?: Record<string, unknown>;
   phoneNumberId: string;
+  /** Defaults to Meta's RSA-OAEP/AES-GCM envelope. Decrypted input is for trusted adapters only. */
+  inputFormat?: "meta" | "decrypted";
+  /** Required for native Meta callbacks; verifies X-Hub-Signature-256 over rawBody. */
+  appSecret?: string;
+  privateKeyPassphrase?: string;
   getPrivateKey: () => Promise<string | CryptoKey | JsonWebKey | undefined>;
   verifyToken?: (flowToken: string, context: { phoneNumberId: string }) => boolean | Promise<boolean>;
 }
 
 export interface FlowContext {
-  action: "DATA_EXCHANGE" | "COMPLETE" | "BACK";
+  action: "INIT" | "DATA_EXCHANGE" | "COMPLETE" | "BACK" | "PING";
   screen: string;
   flowToken: string;
   form: Record<string, unknown>;
@@ -20,7 +27,9 @@ export interface FlowContext {
 }
 
 export interface FlowRespondOptions {
-  screen: string;
+  /** Pass the context from receive() to encrypt a native Meta response. */
+  context?: FlowContext;
+  screen?: string;
   data?: Record<string, unknown>;
   status?: number;
   headers?: Record<string, string>;
@@ -51,53 +60,115 @@ export class FlowServerError extends Error {
   }
 }
 
+// Keep callback keys out of enumerable/loggable context fields.
+const responseKeys = new WeakMap<FlowContext, { key: Buffer; iv: Buffer }>();
+const decryptedContexts = new WeakSet<FlowContext>();
+
 export async function receive(options: FlowReceiveOptions): Promise<FlowContext> {
   const rawBuffer = Buffer.from(options.rawBody);
-  const text = rawBuffer.toString("utf8");
-  let body: Record<string, unknown>;
+  let body: unknown;
   try {
-    body = JSON.parse(text);
+    body = JSON.parse(rawBuffer.toString("utf8"));
   } catch {
     throw new FlowServerError(400, "Invalid JSON payload");
   }
+  if (!isPlainObject(body)) throw new FlowServerError(400, "Expected a JSON object");
 
-  let decrypted: Record<string, unknown> = body;
-  if (body.encrypted_flow_data && body.encryption_metadata) {
-    const metadata = fromFlowJsonWireCase(body.encryption_metadata) as Record<string, unknown>;
-    decrypted = decryptFlowPayload(String(body.encrypted_flow_data), metadata);
-  }
-
-  const camel = fromFlowJsonWireCase(decrypted);
-  const actionRaw = String(camel.action ?? "").toUpperCase();
-  const action = actionRaw === "COMPLETE" ? "COMPLETE" : actionRaw === "BACK" ? "BACK" : "DATA_EXCHANGE";
-  const screen = typeof camel.screen === "string" ? camel.screen : "";
-  const flowToken = String(camel.flowToken ?? camel.flow_token ?? "");
-
-  if (options.verifyToken) {
-    const valid = await options.verifyToken(flowToken, { phoneNumberId: options.phoneNumberId });
-    if (!valid) {
-      throw new FlowServerError(427, "Invalid flow token");
+  let decrypted: Record<string, unknown>;
+  let encryption: { key: Buffer; iv: Buffer } | undefined;
+  if (options.inputFormat === "decrypted") {
+    if (Object.keys(body).some(key => key.startsWith("encrypted_") || key === "encryption_metadata")) {
+      throw new FlowServerError(400, "Expected decrypted input from a trusted adapter");
+    }
+    decrypted = body;
+  } else {
+    if (!options.appSecret) throw new FlowServerError(500, "appSecret is required for Meta callbacks");
+    const signature = Object.entries(options.headers ?? {}).find(([key]) => key.toLowerCase() === "x-hub-signature-256")?.[1];
+    if (typeof signature !== "string" || !/^sha256=[a-fA-F0-9]{64}$/.test(signature) ||
+        !verifySignature({ appSecret: options.appSecret, rawBody: rawBuffer, signatureHeader: signature })) {
+      throw new FlowServerError(432, "Invalid request signature");
+    }
+    const fields = ["encrypted_aes_key", "encrypted_flow_data", "initial_vector"] as const;
+    if (!fields.every(key => typeof body[key] === "string" && body[key])) {
+      throw new FlowServerError(400, "Expected Meta encrypted callback envelope");
+    }
+    let keyObject: KeyObject;
+    try {
+      const privateKey = await options.getPrivateKey();
+      if (!privateKey) throw new Error("Missing key");
+      keyObject = typeof privateKey === "string"
+        ? createPrivateKey({ key: privateKey, passphrase: options.privateKeyPassphrase })
+        : "kty" in privateKey
+          ? createPrivateKey({ key: privateKey as NodeJsonWebKey, format: "jwk" })
+          : KeyObject.from(privateKey as webcrypto.CryptoKey);
+      if (keyObject.type !== "private" || keyObject.asymmetricKeyType !== "rsa") throw new Error("Expected RSA private key");
+    } catch {
+      throw new FlowServerError(500, "Unable to load Flow RSA private key");
+    }
+    try {
+      const key = privateDecrypt({ key: keyObject, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha256" }, Buffer.from(String(body.encrypted_aes_key), "base64"));
+      const iv = Buffer.from(String(body.initial_vector), "base64");
+      const encrypted = Buffer.from(String(body.encrypted_flow_data), "base64");
+      if (key.length !== 16 || iv.length !== 16 || encrypted.length <= 16) throw new Error("Invalid encryption parameters");
+      const decipher = createDecipheriv("aes-128-gcm", key, iv);
+      decipher.setAuthTag(encrypted.subarray(-16));
+      const parsed: unknown = JSON.parse(Buffer.concat([decipher.update(encrypted.subarray(0, -16)), decipher.final()]).toString("utf8"));
+      if (!isPlainObject(parsed)) throw new Error("Expected decrypted object");
+      decrypted = parsed;
+      encryption = { key, iv };
+    } catch {
+      throw new FlowServerError(421, "Unable to decrypt Meta callback");
     }
   }
 
-  const form = isPlainObject(camel.form) ? fromFlowJsonWireCase(camel.form) : {};
-  const data = isPlainObject(camel.data) ? fromFlowJsonWireCase(camel.data) : {};
-
-  return {
-    action,
-    screen,
+  const camel = fromFlowJsonWireCase(decrypted);
+  const action = typeof camel.action === "string" ? camel.action.toUpperCase() : "";
+  if (!["INIT", "DATA_EXCHANGE", "COMPLETE", "BACK", "PING"].includes(action)) {
+    throw new FlowServerError(400, "Unsupported Flow action");
+  }
+  const flowToken = typeof camel.flowToken === "string" ? camel.flowToken : "";
+  const ctx: FlowContext = {
+    action: action as FlowContext["action"],
+    screen: typeof camel.screen === "string" ? camel.screen : "",
     flowToken,
-    form: form as Record<string, unknown>,
-    data: data as Record<string, unknown>,
+    form: isPlainObject(camel.form) ? fromFlowJsonWireCase(camel.form) : {},
+    data: isPlainObject(camel.data) ? fromFlowJsonWireCase(camel.data) : {},
     raw: camel
   };
+  if (encryption) responseKeys.set(ctx, encryption);
+  // Token verification is application authorization, distinct from Meta's signature.
+  if (action !== "PING" || options.inputFormat === "decrypted") {
+    if (typeof options.verifyToken !== "function") throw new FlowServerError(500, "verifyToken is required for Flow actions");
+    if (!flowToken || !await options.verifyToken(flowToken, { phoneNumberId: options.phoneNumberId })) {
+      const error = new FlowServerError(427, "Invalid flow token");
+      if (encryption) {
+        const reply = encryptReply(ctx, { error_msg: "The message is no longer available" });
+        Object.assign(error, { body: reply, headers: { "Content-Type": "text/plain" } });
+      }
+      throw error;
+    }
+  }
+  if (!encryption) decryptedContexts.add(ctx);
+  return ctx;
 }
 
 export function respond(options: FlowRespondOptions): { status: number; headers: Record<string, string>; body: string } {
-  const status = options.status ?? 200;
-  const headers = { "Content-Type": "application/json", ...(options.headers ?? {}) };
-  const body = JSON.stringify({ screen: options.screen, data: options.data ?? {} });
-  return { status, headers, body };
+  const payload = { ...(options.screen !== undefined ? { screen: options.screen } : {}), data: options.data ?? {} };
+  const encrypted = options.context && responseKeys.has(options.context);
+  if (options.context && !encrypted && !decryptedContexts.has(options.context)) {
+    throw new FlowServerError(500, "Unknown or already used Flow response context");
+  }
+  const headers = { ...(options.headers ?? {}), "Content-Type": encrypted ? "text/plain" : "application/json" };
+  return { status: options.status ?? 200, headers, body: encrypted ? encryptReply(options.context!, payload) : JSON.stringify(payload) };
+}
+
+function encryptReply(context: FlowContext, payload: Record<string, unknown>): string {
+  const encryption = responseKeys.get(context);
+  if (!encryption) throw new Error("Missing callback encryption context");
+  // AES-GCM must never encrypt two different responses using the same key/IV.
+  responseKeys.delete(context);
+  const cipher = createCipheriv("aes-128-gcm", encryption.key, Buffer.from(encryption.iv.map(byte => byte ^ 0xff)));
+  return Buffer.concat([cipher.update(JSON.stringify(payload), "utf8"), cipher.final(), cipher.getAuthTag()]).toString("base64");
 }
 
 export async function downloadAndDecrypt(options: DownloadMediaOptions): Promise<ArrayBuffer> {
@@ -116,17 +187,6 @@ export async function downloadAndDecrypt(options: DownloadMediaOptions): Promise
   const copy = new Uint8Array(plaintext.length);
   copy.set(plaintext);
   return copy.buffer;
-}
-
-function decryptFlowPayload(encrypted: string, metadata: Record<string, unknown>): Record<string, unknown> {
-  const cipherWithTag = Buffer.from(encrypted, "base64");
-  const meta = normalizeMetadata(metadata);
-  const plaintext = decryptBuffer(cipherWithTag, meta);
-  try {
-    return JSON.parse(plaintext.toString("utf8"));
-  } catch {
-    throw new FlowServerError(400, "Unable to parse decrypted payload");
-  }
 }
 
 interface NormalizedMetadata {
@@ -153,7 +213,7 @@ function normalizeMetadata(metadata: Record<string, unknown>): NormalizedMetadat
 
 function decryptBuffer(cipherWithTag: Buffer, metadata: NormalizedMetadata): Buffer {
   const encryptedHash = createHash("sha256").update(cipherWithTag).digest();
-  if (!timingSafeEqual(encryptedHash, metadata.encryptedHash)) {
+  if (metadata.encryptedHash.length !== encryptedHash.length || !timingSafeEqual(encryptedHash, metadata.encryptedHash)) {
     throw new FlowServerError(421, "Encrypted payload hash mismatch");
   }
 
@@ -171,7 +231,7 @@ function decryptBuffer(cipherWithTag: Buffer, metadata: NormalizedMetadata): Buf
   const decipher = createDecipheriv("aes-256-cbc", metadata.encryptionKey, metadata.iv);
   const unpadded = Buffer.concat([decipher.update(cipher), decipher.final()]);
   const plainHash = createHash("sha256").update(unpadded).digest();
-  if (!timingSafeEqual(plainHash, metadata.plaintextHash)) {
+  if (metadata.plaintextHash.length !== plainHash.length || !timingSafeEqual(plainHash, metadata.plaintextHash)) {
     throw new FlowServerError(421, "Plaintext hash mismatch");
   }
 
