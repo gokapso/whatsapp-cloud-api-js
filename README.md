@@ -741,7 +741,7 @@ const src = msg?.kapso?.mediaUrl ?? msg?.image?.link; // use direct URL when pre
 
 2) Bytes fallback (universal)
 
-If you need the raw bytes or the URL has not been mirrored yet, use `download()`. The SDK automatically skips auth headers for public WhatsApp CDNs and uses them for `kapso.ai` and its DNS subdomains. Media IDs must be IDs, not URLs or paths. Downloads require HTTPS URLs without embedded credentials; authenticated downloads reject redirects. Byte and Blob modes throw `GraphApiError` for HTTP failures; `as: "response"` returns the raw response, including non-2xx statuses, for caller inspection.
+If you need the raw bytes or the URL has not been mirrored yet, use `download()`. The SDK automatically skips auth headers for public WhatsApp CDNs and uses them for `kapso.ai` and its DNS subdomains. Media IDs must be IDs, not URLs or paths. Downloads require HTTPS URLs without embedded credentials; all media downloads reject redirects (including downloads with caller-supplied headers). Byte and Blob modes throw `GraphApiError` for HTTP failures; `as: "response"` returns the raw response, including non-2xx statuses, for caller inspection.
 
 Key points:
 - `client.media.download({ mediaId, ... })` resolves the short‑lived URL via `media.get()` then fetches the bytes.

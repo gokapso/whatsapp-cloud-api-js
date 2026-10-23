@@ -67,3 +67,22 @@ it.each([undefined, "blob", "response"] as const)("handles HTTP errors for mode 
     expect(await response.text()).toBe("<h1>Unavailable</h1>");
   } else await expect(download).rejects.toMatchObject({ httpStatus: 503 });
 });
+
+it.each(["auto", "never"] as const)("rejects redirects even for unauthenticated downloads with custom headers: %s", async auth => {
+  const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ url: "https://cdn.example/file" })).mockResolvedValueOnce(new Response("ok"));
+  const client = new WhatsAppClient({ accessToken: "dummy", fetch: fetchMock });
+  await client.media.download({ mediaId: "123", auth, headers: { "X-Custom-Secret": "dummy-custom-secret" } });
+  const init = fetchMock.mock.calls[1][1];
+  expect(init?.redirect).toBe("error");
+  expect(new Headers(init?.headers).get("X-Custom-Secret")).toBe("dummy-custom-secret");
+  expect(new Headers(init?.headers).has("Authorization")).toBe(false);
+});
+
+it("preserves explicit low-level absolute fetch and rawFetch redirect choices", async () => {
+  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async () => new Response("ok"));
+  const client = new WhatsAppClient({ kapsoApiKey: "dummy", fetch: fetchMock });
+  await client.fetch("https://trusted.example/file", { redirect: "manual" });
+  await client.rawFetch("https://trusted.example/file", { redirect: "follow" });
+  expect(fetchMock.mock.calls[0]).toEqual(["https://trusted.example/file", { redirect: "manual", headers: { "X-API-Key": "dummy" } }]);
+  expect(fetchMock.mock.calls[1]).toEqual(["https://trusted.example/file", { redirect: "follow" }]);
+});

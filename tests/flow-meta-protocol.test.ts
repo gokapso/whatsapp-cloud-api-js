@@ -1,4 +1,4 @@
-import { constants, createCipheriv, createDecipheriv, createHmac, generateKeyPairSync, publicEncrypt, randomBytes } from "node:crypto";
+import { constants, createCipheriv, createDecipheriv, createHmac, generateKeyPairSync, publicEncrypt, randomBytes, webcrypto } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { receive, respond } from "../src/server/flows";
 
@@ -70,7 +70,9 @@ describe("Meta Flow callback protocol", () => {
     expect(f.decryptResponse(respond({ context, data: { status: "active" } }).body)).toEqual({ data: { status: "active" } });
   });
   it("requires token verification for business actions", async () => {
-    await expect(receive({ ...fixture().options(), verifyToken: undefined })).rejects.toMatchObject({ status: 500 });
+    for (const verifyToken of [undefined, true as unknown as (token: string) => boolean]) {
+      await expect(receive({ ...fixture().options(), verifyToken })).rejects.toMatchObject({ status: 500 });
+    }
   });
   it("requires explicit adapter mode and token verification for plaintext", async () => {
     const base = { phoneNumberId: "123", getPrivateKey: async () => undefined };
@@ -105,5 +107,54 @@ it("rejects wrong signatures, missing private keys, missing tokens, and unsuppor
 
 it("supports private JWK keys", async () => {
   const context = await receive({ ...fixture().options(), getPrivateKey: async () => privateKey.export({ format: "jwk" }) });
+  expect(context.flowToken).toBe("TOKEN");
+});
+
+it("never downgrades an unknown, copied, or consumed native context to plaintext", async () => {
+  const context = await receive(fixture().options());
+  expect(() => respond({ context: { ...context }, screen: "PRIVATE" })).toThrow("Unknown or already used");
+  expect(respond({ context, screen: "PRIVATE" }).headers["Content-Type"]).toBe("text/plain");
+  expect(() => respond({ context, screen: "CHANGED" })).toThrow("Unknown or already used");
+  // The documented JSON builder is still available when no native context is supplied.
+  expect(respond({ screen: "DONE" }).headers["Content-Type"]).toBe("application/json");
+});
+
+it("returns JSON only for an explicitly verified decrypted adapter context", async () => {
+  const context = await receive({ rawBody: Buffer.from(JSON.stringify({ action: "BACK", flow_token: "TOKEN" })), phoneNumberId: "123", inputFormat: "decrypted", getPrivateKey: async () => undefined, verifyToken: () => true });
+  expect(respond({ context, screen: "FORM" }).headers["Content-Type"]).toBe("application/json");
+});
+
+it("authenticates original bytes rather than reserialized JSON", async () => {
+  const options = fixture().options();
+  const getPrivateKey = vi.fn();
+  await expect(receive({ ...options, rawBody: Buffer.concat([options.rawBody, Buffer.from("\n")]), getPrivateKey })).rejects.toMatchObject({ status: 432 });
+  expect(getPrivateKey).not.toHaveBeenCalled();
+});
+
+it("reports invalid key configuration as 500 without exposing key material", async () => {
+  const ec = generateKeyPairSync("ec", { namedCurve: "prime256v1" }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  for (const key of ["dummy-invalid-private-key", ec]) {
+    await expect(receive({ ...fixture().options(), getPrivateKey: async () => key })).rejects.toMatchObject({ status: 500, body: JSON.stringify({ error: "Unable to load Flow RSA private key" }) });
+  }
+  await expect(receive({ ...fixture().options(), getPrivateKey: async () => { throw new Error("dummy-secret-provider-error"); } })).rejects.toMatchObject({ status: 500, message: "Unable to load Flow RSA private key" });
+});
+
+it("supports encrypted PEM and rejects a wrong passphrase as a configuration error", async () => {
+  const encryptedPem = privateKey.export({ type: "pkcs8", format: "pem", cipher: "aes-256-cbc", passphrase: "dummy-passphrase" }).toString();
+  const options = { ...fixture().options(), getPrivateKey: async () => encryptedPem };
+  expect((await receive({ ...options, privateKeyPassphrase: "dummy-passphrase" })).flowToken).toBe("TOKEN");
+  await expect(receive({ ...options, privateKeyPassphrase: "wrong" })).rejects.toMatchObject({ status: 500 });
+});
+
+it("reports a different valid RSA private key as callback decryption failure", async () => {
+  const differentKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  await expect(receive({ ...fixture().options(), getPrivateKey: async () => differentKey })).rejects.toMatchObject({ status: 421 });
+});
+
+
+it("supports Web Crypto private keys", async () => {
+  const der = new Uint8Array(privateKey.export({ type: "pkcs8", format: "der" }));
+  const key = await webcrypto.subtle.importKey("pkcs8", der, { name: "RSA-OAEP", hash: "SHA-256" }, false, ["decrypt"]);
+  const context = await receive({ ...fixture().options(), getPrivateKey: async () => key as unknown as CryptoKey });
   expect(context.flowToken).toBe("TOKEN");
 });

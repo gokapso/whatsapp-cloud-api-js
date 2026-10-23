@@ -62,6 +62,7 @@ export class FlowServerError extends Error {
 
 // Keep callback keys out of enumerable/loggable context fields.
 const responseKeys = new WeakMap<FlowContext, { key: Buffer; iv: Buffer }>();
+const decryptedContexts = new WeakSet<FlowContext>();
 
 export async function receive(options: FlowReceiveOptions): Promise<FlowContext> {
   const rawBuffer = Buffer.from(options.rawBody);
@@ -91,14 +92,20 @@ export async function receive(options: FlowReceiveOptions): Promise<FlowContext>
     if (!fields.every(key => typeof body[key] === "string" && body[key])) {
       throw new FlowServerError(400, "Expected Meta encrypted callback envelope");
     }
-    const privateKey = await options.getPrivateKey();
-    if (!privateKey) throw new FlowServerError(500, "Flow private key is required");
+    let keyObject: KeyObject;
     try {
-      const keyObject = typeof privateKey === "string"
+      const privateKey = await options.getPrivateKey();
+      if (!privateKey) throw new Error("Missing key");
+      keyObject = typeof privateKey === "string"
         ? createPrivateKey({ key: privateKey, passphrase: options.privateKeyPassphrase })
         : "kty" in privateKey
           ? createPrivateKey({ key: privateKey as NodeJsonWebKey, format: "jwk" })
           : KeyObject.from(privateKey as webcrypto.CryptoKey);
+      if (keyObject.type !== "private" || keyObject.asymmetricKeyType !== "rsa") throw new Error("Expected RSA private key");
+    } catch {
+      throw new FlowServerError(500, "Unable to load Flow RSA private key");
+    }
+    try {
       const key = privateDecrypt({ key: keyObject, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha256" }, Buffer.from(String(body.encrypted_aes_key), "base64"));
       const iv = Buffer.from(String(body.initial_vector), "base64");
       const encrypted = Buffer.from(String(body.encrypted_flow_data), "base64");
@@ -131,7 +138,7 @@ export async function receive(options: FlowReceiveOptions): Promise<FlowContext>
   if (encryption) responseKeys.set(ctx, encryption);
   // Token verification is application authorization, distinct from Meta's signature.
   if (action !== "PING" || options.inputFormat === "decrypted") {
-    if (!options.verifyToken) throw new FlowServerError(500, "verifyToken is required for Flow actions");
+    if (typeof options.verifyToken !== "function") throw new FlowServerError(500, "verifyToken is required for Flow actions");
     if (!flowToken || !await options.verifyToken(flowToken, { phoneNumberId: options.phoneNumberId })) {
       const error = new FlowServerError(427, "Invalid flow token");
       if (encryption) {
@@ -141,12 +148,16 @@ export async function receive(options: FlowReceiveOptions): Promise<FlowContext>
       throw error;
     }
   }
+  if (!encryption) decryptedContexts.add(ctx);
   return ctx;
 }
 
 export function respond(options: FlowRespondOptions): { status: number; headers: Record<string, string>; body: string } {
   const payload = { ...(options.screen !== undefined ? { screen: options.screen } : {}), data: options.data ?? {} };
   const encrypted = options.context && responseKeys.has(options.context);
+  if (options.context && !encrypted && !decryptedContexts.has(options.context)) {
+    throw new FlowServerError(500, "Unknown or already used Flow response context");
+  }
   const headers = { ...(options.headers ?? {}), "Content-Type": encrypted ? "text/plain" : "application/json" };
   return { status: options.status ?? 200, headers, body: encrypted ? encryptReply(options.context!, payload) : JSON.stringify(payload) };
 }
@@ -154,6 +165,8 @@ export function respond(options: FlowRespondOptions): { status: number; headers:
 function encryptReply(context: FlowContext, payload: Record<string, unknown>): string {
   const encryption = responseKeys.get(context);
   if (!encryption) throw new Error("Missing callback encryption context");
+  // AES-GCM must never encrypt two different responses using the same key/IV.
+  responseKeys.delete(context);
   const cipher = createCipheriv("aes-128-gcm", encryption.key, Buffer.from(encryption.iv.map(byte => byte ^ 0xff)));
   return Buffer.concat([cipher.update(JSON.stringify(payload), "utf8"), cipher.final(), cipher.getAuthTag()]).toString("base64");
 }

@@ -84,7 +84,7 @@ export class MediaResource {
   /**
    * Download media bytes for a given mediaId.
    * - Uses {@link get} to resolve an HTTPS URL. Auto auth applies only to Kapso DNS hosts.
-   * - Authenticated downloads reject redirects. Byte/Blob modes throw on HTTP errors.
+   * - Downloads reject redirects. Byte/Blob modes throw on HTTP errors.
    * - `as: "response"` preserves the raw response, including unsuccessful statuses.
    * - Set `as` to control the return type. Defaults to `arrayBuffer`.
    */
@@ -116,7 +116,7 @@ export class MediaResource {
       res = await clientWithFetch.fetch(targetUrl, { headers: input.headers, redirect: "error" });
     } else {
       // No auth headers for public CDNs (e.g., lookaside.cdnwhatsapp.net)
-      res = await clientWithFetch.rawFetch(targetUrl, { headers: input.headers });
+      res = await clientWithFetch.rawFetch(targetUrl, { headers: input.headers, redirect: "error" });
     }
 
     if (input.as === "response") return res;
