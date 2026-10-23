@@ -156,11 +156,39 @@ export interface MediaData {
   [key: string]: unknown;
 }
 
+/**
+ * A message status update, as delivered in Meta webhooks (`statuses[]`) and in
+ * the `message.kapso.statuses` history of Kapso webhooks, camelCased.
+ * @category Webhooks
+ */
+export interface MessageStatusUpdate {
+  id: string;
+  status: string;
+  timestamp?: string;
+  /** Recipient phone number. Can be omitted; recipientUserId always arrives. */
+  recipientId?: string;
+  /** Recipient business-scoped user ID (BSUID). */
+  recipientUserId?: string;
+  /** Recipient parent BSUID; only for businesses enrolled in parent BSUIDs. */
+  recipientParentUserId?: string;
+  conversation?: Record<string, unknown>;
+  pricing?: Record<string, unknown>;
+  errors?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+/** How a message entered Kapso, as reported in `message.kapso.origin`. */
+export type KapsoMessageOrigin = "cloud_api" | "business_app" | "history_sync" | "other_app" | "meta_business_agent" | (string & {});
+
 export interface KapsoMessageExtensions {
   direction?: string;
   status?: string;
   processingStatus?: string;
+  /** How the message entered the system (API send, Business App echo, history import, ...). */
+  origin?: KapsoMessageOrigin;
   phoneNumber?: string;
+  /** Business phone number ID the message belongs to, when Kapso includes it. */
+  phoneNumberId?: string;
   hasMedia?: boolean;
   mediaData?: MediaData;
   mediaUrl?: string;
@@ -172,6 +200,12 @@ export interface KapsoMessageExtensions {
   flowToken?: string;
   flowName?: string;
   orderText?: string;
+  /** Raw Meta status history for outbound messages, oldest first. Present on Kapso webhooks once a status was recorded. */
+  statuses?: MessageStatusUpdate[];
+  /** Transcript of an inbound audio message, when Kapso transcribed it. */
+  transcript?: { text?: string; [key: string]: unknown } | null;
+  /** True when the message was observed on a shared number without this project owning the thread. */
+  passive?: boolean;
   [key: string]: unknown;
 }
 
@@ -194,6 +228,8 @@ export interface MetaMessage {
   toUserId?: string;
   /** Recipient parent BSUID on outbound messages. */
   toParentUserId?: string;
+  /** Sender WhatsApp username, when the user adopted one. Kapso webhooks include it next to fromUserId. */
+  username?: string | null;
   context?: MetaMessageContext | null;
   text?: { body?: string; [key: string]: unknown };
   image?: { id?: string; link?: string; caption?: string; [key: string]: unknown };
