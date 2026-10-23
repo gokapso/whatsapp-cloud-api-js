@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `normalizeKapsoWebhook(payload, { headers })` in `@kapso/whatsapp-cloud-api/server` normalizes Kapso-format webhook deliveries (payload v2), both single events and batch envelopes, into the `normalizeWebhook` result shape plus Kapso extras: `event`, `idempotencyKey`, `payloadVersion`, `batch`, `batchInfo`, typed `events[]` and `conversations[]`. Inbound messages land in `messages`; `whatsapp.message.sent|delivered|read|failed` become `statuses` built from `message.kapso.statuses`, keeping `pricing` and `errors`.
+- `readKapsoWebhookHeaders`, `KAPSO_WEBHOOK_HEADERS`, `isKapsoWebhookPayload` and `getKapsoSender` (returns `{ to }` and/or `{ recipient }` for phone or BSUID-only senders).
+- `signKapsoWebhook({ secret, rawBody })`, the inverse of `verifyKapsoWebhookSignature`, for tests and replay tooling.
+- Types: `NormalizedKapsoWebhookResult`, `KapsoWebhookEvent`, `KapsoWebhookEventName`, `KapsoWebhookHeaders`, `KapsoWebhookConversation`, `KapsoWebhookBatchInfo`, `WebhookHeadersLike`. `MessageStatusUpdate` is now exported from the package root as well.
+
+### Changed
+
+- `KapsoMessageExtensions` gains the documented optional fields `origin`, `phoneNumberId`, `statuses`, `transcript` and `passive`. `MetaMessage` gains optional `username`. All additive.
+
 ## 0.4.0
 
 Includes the call features merged after 0.3.0, together with the resource/media and Flow fixes listed below.

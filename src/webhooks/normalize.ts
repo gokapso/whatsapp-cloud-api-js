@@ -1,21 +1,7 @@
 import { toCamelCaseDeep } from "../utils/case";
-import type { CallArtifactKind, KapsoMessageExtensions, MetaMessage, UnifiedMessage } from "../types";
+import type { CallArtifactKind, KapsoMessageExtensions, MessageStatusUpdate, MetaMessage, UnifiedMessage } from "../types";
 
-export interface MessageStatusUpdate {
-  id: string;
-  status: string;
-  timestamp?: string;
-  /** Recipient phone number. Can be omitted; recipientUserId always arrives. */
-  recipientId?: string;
-  /** Recipient business-scoped user ID (BSUID). */
-  recipientUserId?: string;
-  /** Recipient parent BSUID; only for businesses enrolled in parent BSUIDs. */
-  recipientParentUserId?: string;
-  conversation?: Record<string, unknown>;
-  pricing?: Record<string, unknown>;
-  errors?: Array<Record<string, unknown>>;
-  [key: string]: unknown;
-}
+export type { MessageStatusUpdate } from "../types";
 
 /**
  * A webhook contact entry, camelized. Either waId or userId can be absent:
@@ -182,7 +168,12 @@ export function normalizeWebhook(payload: unknown): NormalizedWebhookResult {
   return result;
 }
 
-function normalizeMessage(message: MetaMessage): UnifiedMessage {
+/**
+ * CamelCase one Meta message and hydrate Kapso extras (Flow responses, order text).
+ * Shared by the Meta and Kapso webhook normalizers.
+ * @internal
+ */
+export function normalizeMessage(message: MetaMessage): UnifiedMessage {
   const normalized = toCamelCaseDeep(message) as UnifiedMessage;
 
   if (normalized.order && typeof (normalized.order as Record<string, unknown>).text !== "undefined") {
