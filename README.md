@@ -52,6 +52,8 @@ Query conversations, messages, contacts, and more.
 - [`client.phoneNumbers`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/phone-numbers) — request/verify code, register/deregister, settings, business profile
 - [`client.flows`](#flows) — author, validate, deploy, and preview WhatsApp Flows
 - [`verifySignature`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/utilities#webhooks) — verify webhook signatures (app secret)
+- [`verifyKapsoWebhookSignature`, `normalizeKapsoWebhook`, `getKapsoSender`](#kapso-webhooks-payload-v2): verify and normalize Kapso-format webhooks (`X-Webhook-Signature`, single or batched deliveries, status history, BSUID senders)
+- [`signKapsoWebhook`](#kapso-webhooks-payload-v2): sign a raw body like Kapso does, for tests and replay tooling
 - `receiveFlowEvent`, `respondToFlow`, `downloadFlowMedia` — decrypt and respond to Flow callbacks
 - [`TemplateDefinition`](#templates) — strict template creation builders
 - [`buildTemplateSendPayload`](#typed-builder-optional) — build send-time template payloads
@@ -809,6 +811,69 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
 ```
 
 `normalizeWebhook()` unwraps the raw Graph payload, returning `{ messages, statuses, calls, contacts }` with camelCased fields so webhook events and history queries share the same Meta-compatible structure. Each normalized message also gets `kapso.direction` (`"inbound"`/`"outbound"`) and SMB echoes are tagged with `kapso.source = "smb_message_echo"` so you can tell when the business initiated a message. All other webhook `field` payloads are exposed under `events.raw.<fieldName>` (camelCased), so you can react to updates like `accountAlerts`, `templateCategoryUpdate`, etc., without additional parsing.
+
+### Kapso webhooks (payload v2)
+
+Webhooks registered with `kind: "kapso"` (the default when Kapso provisions your number) do not deliver Meta's Graph payload. They deliver Kapso's v2 payload, `{ message, conversation, is_new_conversation, phone_number_id }`, or a `{ type, batch: true, data: [...], batch_info }` envelope when message buffering is on, with the event name in `X-Webhook-Event` and a per-delivery id in `X-Idempotency-Key`. `normalizeKapsoWebhook()` turns either shape into the same structure `normalizeWebhook()` returns, plus the Kapso extras, so one handler can serve both webhook kinds.
+
+```ts
+import express from "express";
+import { WhatsAppClient } from "@kapso/whatsapp-cloud-api";
+import { getKapsoSender, normalizeKapsoWebhook, verifyKapsoWebhookSignature } from "@kapso/whatsapp-cloud-api/server";
+
+const client = new WhatsAppClient({ baseUrl: "https://api.kapso.ai/meta/whatsapp", kapsoApiKey: process.env.KAPSO_API_KEY! });
+const seen = new Set<string>(); // use a persistent store in production
+
+app.post("/webhooks/kapso", express.raw({ type: "application/json" }), async (req, res) => {
+  const ok = verifyKapsoWebhookSignature({
+    secret: process.env.KAPSO_WEBHOOK_SECRET!,
+    rawBody: req.body,
+    signatureHeader: req.headers["x-webhook-signature"] as string,
+  });
+  if (!ok) return res.status(401).end();
+
+  const events = normalizeKapsoWebhook(JSON.parse(req.body.toString("utf8")), { headers: req.headers });
+
+  // Dedupe on the delivery id, not on message.id: delivered, read and failed share the message id.
+  if (events.idempotencyKey && seen.has(events.idempotencyKey)) return res.sendStatus(200);
+  if (events.idempotencyKey) seen.add(events.idempotencyKey);
+
+  res.sendStatus(200); // acknowledge within 10 s; Kapso retries at 10 s and 40 s otherwise
+
+  for (const message of events.messages) {
+    // Inbound messages only. Same shape as client.messages.query(); outbound echoes stay in events.events[].
+    const address = getKapsoSender(message); // { to } for phone numbers, { recipient } for BSUID-only senders
+    if (!address || message.type !== "text") continue;
+    await client.messages.sendText({ phoneNumberId: events.phoneNumberId!, ...address, body: `You said: ${message.text?.body}` });
+  }
+
+  for (const status of events.statuses) {
+    // sent | delivered | read | failed, with pricing and errors from message.kapso.statuses
+  }
+
+  for (const event of events.events) {
+    if (event.event === "whatsapp.conversation.inactive") {
+      // event.conversation, event.sinceMessage, event.inactivity.minutes
+    }
+  }
+});
+```
+
+What you get back:
+
+- `messages`: inbound messages from `whatsapp.message.received` (and `whatsapp.thread.standby`), run through the same normalizer as the Meta path, so `kapso.flowResponse`, `kapso.orderText` and the `kapso` block (`mediaData`, `mediaUrl`, `transcript`, `origin`, `contactName`, `whatsappConversationId`, ...) come out camelCased.
+- `statuses`: `MessageStatusUpdate` entries derived from `whatsapp.message.sent|delivered|read|failed`, taken from the matching entry of `message.kapso.statuses` so `pricing` and `errors` are preserved.
+- `contacts`: one per conversation with `waId`, `userId` (business-scoped user ID) and `profile.name` / `profile.username`.
+- `event`, `idempotencyKey`, `payloadVersion`, `batch`, `batchInfo`, `events[]` (one typed entry per delivery item, including `conversation.*`, `contact.*` and `thread.*` payloads) and `conversations[]`.
+
+Notes:
+
+- With buffering enabled, a single message still arrives inside a batch envelope. Check `batch` or iterate `events`, do not assume the single-event shape.
+- Pass the request headers. Without them the event name falls back to the envelope `type`, and status deliveries are recognized from `message.kapso.status`.
+- On webhooks, `message.kapso.content` is a text rendering of the message (for example the caption plus media description); history queries return the original payload fragment there.
+- `readKapsoWebhookHeaders(headers)` and `KAPSO_WEBHOOK_HEADERS` give typed access to the headers on their own. `isKapsoWebhookPayload(body)` tells a Kapso body apart from a Meta one when a route receives both.
+- Webhooks registered with `kind: "meta"` keep using `verifySignature` + `normalizeWebhook`.
+- `signKapsoWebhook({ secret, rawBody })` produces the `X-Webhook-Signature` value for a body, for tests and replay tooling.
 
 ## Raw fetch helper
 
