@@ -124,14 +124,21 @@ const addressMessageSchema = baseMessageSchema.extend({
   parameters: addressParametersSchema
 });
 
+// Meta's location request message carries no action parameters: the only body
+// is `interactive.body.text` and the action is `{ name: "send_location" }`.
+// `parameters` is still accepted so existing callers keep compiling, but it is
+// ignored. Meta rejects `action.parameters` with
+// `Unexpected key "request_message" on param "interactive.action.parameters"`.
 const locationRequestParametersSchema = z.object({
-  requestMessage: z.string().min(1).max(MAX_BODY_CHARS)
+  /** @deprecated Not part of Meta's payload and never sent. Use `bodyText`. */
+  requestMessage: z.string().min(1).max(MAX_BODY_CHARS).optional()
 });
 
 const locationRequestMessageSchema = baseMessageSchema.extend({
   bodyText: z.string().min(1).max(MAX_BODY_CHARS),
   footerText: z.string().max(MAX_FOOTER_CHARS).optional(),
-  parameters: locationRequestParametersSchema
+  /** @deprecated Not part of Meta's payload and never sent. Use `bodyText`. */
+  parameters: locationRequestParametersSchema.optional()
 });
 
 const callPermissionParametersSchema = z.object({
@@ -545,17 +552,12 @@ export class InteractiveMessageSender {
 
   async sendLocationRequest(input: LocationRequestInteractiveInput) {
     const parsed = parseInput(locationRequestMessageSchema, input, "Location request interactive message");
-    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText, parameters } = parsed;
+    const { phoneNumberId, to, recipient, recipientType, contextMessageId, bizOpaqueCallbackData, bodyText, footerText } = parsed;
 
     const interactive: Record<string, unknown> = {
       type: "location_request_message",
       body: { text: bodyText },
-      action: {
-        name: "send_location",
-        parameters: {
-          requestMessage: parameters.requestMessage
-        }
-      }
+      action: { name: "send_location" }
     };
 
     const footer = buildFooter(footerText);

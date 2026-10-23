@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `messages.sendInteractiveLocationRequest` no longer sends `action.parameters.request_message`, which Meta rejects with `Unexpected key "request_message" on param "interactive.action.parameters"`. The request now matches Meta's documented shape, `action: { name: "send_location" }`, with `bodyText` as the only text. `parameters` is still accepted for compatibility but is deprecated and ignored.
+
 ## 0.4.0
 
 Includes the call features merged after 0.3.0, together with the resource/media and Flow fixes listed below.
