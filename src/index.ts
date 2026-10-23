@@ -16,6 +16,8 @@ export type {
   DeployResult
 } from "./resources/flows";
 export * as TemplateDefinition from "./resources/templates/definition";
+export { buildTemplateDefinition } from "./resources/templates/definition";
+export type { TemplateDefinitionInput } from "./resources/templates/definition";
 export {
   buildTemplateSendPayload,
   buildVoiceCallTemplateButton,
@@ -51,6 +53,7 @@ export {
 } from "./kapso";
 export { buildTemplatePayload } from "./resources/templates/raw";
 export type {
+  FlowInteractiveInput,
   VoiceCallInteractiveInput,
   VoiceCallInteractiveParameters,
   CtaUrlInteractiveInput,
