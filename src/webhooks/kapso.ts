@@ -338,6 +338,8 @@ export function getKapsoSender(message: UnifiedMessage): { to?: string; recipien
   return address.to || address.recipient ? address : undefined;
 }
 
+const IDENTITY_FIELDS = ["from", "to", "fromUserId", "fromParentUserId", "toUserId", "toParentUserId"] as const;
+
 function hydrateMessage(
   message: UnifiedMessage,
   conversation: KapsoWebhookConversation | undefined,
@@ -346,6 +348,16 @@ function hydrateMessage(
 ): void {
   const kapso: KapsoMessageExtensions = message.kapso ?? {};
   message.kapso = kapso;
+
+  // Kapso sends every identity field, with null for the ones that do not apply
+  // (for example from_user_id on an outbound echo, or from when only a BSUID is
+  // visible). MetaMessage declares them as optional strings, so drop the nulls
+  // to keep the runtime shape honest with the type and with the Meta path.
+  for (const key of IDENTITY_FIELDS) {
+    if (message[key] === null) {
+      delete message[key];
+    }
+  }
 
   if (!kapso.direction) {
     kapso.direction = inferDirection(eventName, message);

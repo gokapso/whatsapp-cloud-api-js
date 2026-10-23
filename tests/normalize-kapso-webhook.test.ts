@@ -191,9 +191,42 @@ describe("normalizeKapsoWebhook", () => {
     const result = normalizeKapsoWebhook(payload, { headers: headersFor("whatsapp.message.received") });
 
     expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].from).toBeNull();
+    expect(result.messages[0].from).toBeUndefined();
     expect(getKapsoSender(result.messages[0])).toEqual({ recipient: "US.13491208655302741918" });
     expect(result.contacts).toEqual([{ userId: "US.13491208655302741918", profile: { username: "@johndoe" } }]);
+  });
+
+  it("drops null identity fields so the message matches the MetaMessage type", () => {
+    const payload = {
+      phone_number_id: "123456789012345",
+      is_new_conversation: false,
+      conversation: { ...conversation, business_scoped_user_id: null, parent_business_scoped_user_id: null, username: null },
+      message: {
+        ...received.message,
+        from_user_id: null,
+        from_parent_user_id: null,
+        to: null,
+        to_user_id: null,
+        to_parent_user_id: null,
+        username: null,
+        context: null
+      }
+    };
+    const result = normalizeKapsoWebhook(payload, { headers: headersFor("whatsapp.message.received") });
+
+    expect(result.messages).toHaveLength(1);
+    const [message] = result.messages;
+    expect(message.from).toBe("15551234567");
+    expect(message).not.toHaveProperty("fromUserId");
+    expect(message).not.toHaveProperty("fromParentUserId");
+    expect(message).not.toHaveProperty("to");
+    expect(message).not.toHaveProperty("toUserId");
+    expect(message).not.toHaveProperty("toParentUserId");
+    // username and context are declared nullable and pass through as sent.
+    expect(message.username).toBeNull();
+    expect(message.context).toBeNull();
+    expect(getKapsoSender(message)).toEqual({ to: "15551234567" });
+    expect(result.contacts).toEqual([{ waId: "15551234567", profile: { name: "John Doe" } }]);
   });
 
   it("unwraps a batch envelope and takes the event from the envelope type", () => {
