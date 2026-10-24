@@ -62,6 +62,8 @@ export function toCamelCaseDeep<T>(input: T): T {
   return input;
 }
 
+const VERBATIM_VALUE_KEYS = new Set(["flow_action_payload", "flow_action_data"]);
+
 export function toSnakeCaseDeep<T>(input: T): T {
   if (Array.isArray(input)) {
     return input.map((item) => toSnakeCaseDeep(item)) as unknown as T;
@@ -70,7 +72,8 @@ export function toSnakeCaseDeep<T>(input: T): T {
   if (isPlainObject(input)) {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(input)) {
-      result[toSnakeCaseKey(key)] = toSnakeCaseDeep(value);
+      const snakeKey = toSnakeCaseKey(key);
+      result[snakeKey] = VERBATIM_VALUE_KEYS.has(snakeKey) ? value : toSnakeCaseDeep(value);
     }
 
     return result as T;
