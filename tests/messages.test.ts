@@ -360,6 +360,66 @@ describe("Messages resource", () => {
     expect(params.flow_action).toBe("navigate");
   });
 
+  it("keeps flow action payload data keys as written", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendInteractiveFlow({
+      phoneNumberId: "123",
+      to: "15551234567",
+      bodyText: "Start flow",
+      parameters: {
+        flowId: "FLOW123",
+        flowCta: "Open",
+        flowAction: "navigate",
+        flowActionPayload: {
+          screen: "WELCOME",
+          data: { firstName: "Ana", orderId: 7, deliveryAddress: { streetName: "Main" } }
+        }
+      }
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody.interactive.action.parameters.flow_action_payload).toEqual({
+      screen: "WELCOME",
+      data: { firstName: "Ana", orderId: 7, deliveryAddress: { streetName: "Main" } }
+    });
+  });
+
+  it("keeps template flow button action data keys as written", async () => {
+    const { fetchMock, responses } = setupFetch();
+    const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
+
+    await client.messages.sendTemplate({
+      phoneNumberId: "123",
+      to: "15551234567",
+      template: buildTemplateSendPayload({
+        name: "order_flow",
+        language: "en_US",
+        buttons: [
+          {
+            type: "button",
+            subType: "flow",
+            index: 0,
+            parameters: [
+              { type: "action", action: { flow_token: "FT", flow_action_data: { firstName: "Ana", orderId: 7 } } }
+            ]
+          }
+        ]
+      })
+    });
+
+    const parsedBody = JSON.parse(String(responses[0]?.init.body));
+    expect(parsedBody.template.components[0]).toEqual({
+      type: "button",
+      sub_type: "flow",
+      index: 0,
+      parameters: [
+        { type: "action", action: { flow_token: "FT", flow_action_data: { firstName: "Ana", orderId: 7 } } }
+      ]
+    });
+  });
+
   it("sends a draft flow interactive message", async () => {
     const { fetchMock, responses } = setupFetch();
     const client = new WhatsAppClient({ accessToken: "token", fetch: fetchMock });
