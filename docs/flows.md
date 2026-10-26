@@ -82,6 +82,14 @@ console.log("Validation errors:", result.validationErrors);
 
 Use `client.messages.sendInteractiveFlow` (typed with `FlowInteractiveInput`) to trigger your flow. `flowCta` is required; `flowMessageVersion` defaults to `"3"` when omitted. Meta treats an omitted `mode` as `"published"`, so pass `mode: "draft"` when testing an unpublished Flow.
 
+Flow messages are only delivered from a WhatsApp Business Account that has completed Meta business verification. On an unverified WABA every send, draft or published, fails with:
+
+```
+(#139000) Blocked by Integrity
+```
+
+The Flow itself still validates and deploys, so the error only shows up at send time. Complete verification in the Meta Business security center before testing with real recipients; `client.flows.preview({ flowId, interactive: true })` works without it.
+
 ```ts
 import { WhatsAppClient, type FlowInteractiveInput } from "@kapso/whatsapp-cloud-api";
 

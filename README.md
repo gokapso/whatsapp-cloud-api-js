@@ -254,6 +254,8 @@ await client.messages.sendInteractiveCarousel({
 });
 ```
 
+Cards take an image or video header, up to 160 characters of body text, and either one URL button or quick reply buttons; every card must use the same button structure. A quick reply tapped on a card does not arrive as `interactive.button_reply`: Meta delivers it as a `type: "button"` message with `button.text` (the label) and `button.payload` (the button `id`), the same shape as template quick replies, with `context.id` pointing at the carousel message. Kapso webhooks mirror the pair in `kapso.message_type_data`.
+
 ### Catalog Message
 ```ts
 await client.messages.sendInteractiveCatalogMessage({
@@ -448,6 +450,8 @@ await client.messages.sendInteractiveFlow({
   }
 });
 ```
+
+Sending a Flow requires a WABA that has completed Meta business verification; otherwise every send fails with `(#139000) Blocked by Integrity`, even though the Flow deploys and previews fine. See [docs/flows.md](docs/flows.md).
 
 > `flowCta` is required by Meta. `flowMessageVersion` defaults to `"3"` when omitted. Meta treats an omitted `mode` as `"published"`; use `mode: "draft"` for an unpublished Flow.
 
