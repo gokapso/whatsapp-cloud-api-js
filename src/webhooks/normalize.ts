@@ -173,6 +173,73 @@ export function normalizeWebhook(payload: unknown): NormalizedWebhookResult {
  * Shared by the Meta and Kapso webhook normalizers.
  * @internal
  */
+/** The option a user tapped, whichever message shape WhatsApp used to deliver it. */
+export interface TappedOption {
+  /** The `id` of a reply button or list row, or the `payload` of a template or carousel quick reply. */
+  id: string;
+  /** The label the user saw. */
+  title: string;
+  /** Only for list rows. */
+  description?: string;
+  /** Where the tap came from. */
+  source: "button_reply" | "list_reply" | "button";
+}
+
+/**
+ * Returns the option a user tapped, or undefined when the message is not a tap.
+ *
+ * WhatsApp delivers taps in three shapes: reply buttons as
+ * `interactive.button_reply`, list rows as `interactive.list_reply`, and quick
+ * replies on templates and on free-form carousel cards as a top-level
+ * `type: "button"` message with `button.text` and `button.payload`. Handlers
+ * that only check `interactive` miss the third one. Works on messages from
+ * `normalizeWebhook`, `normalizeKapsoWebhook` and `messages.query`; it also
+ * reads raw snake_case keys so a not yet normalized webhook message works too.
+ */
+export function getTappedOption(message: MetaMessage | null | undefined): TappedOption | undefined {
+  if (!message || typeof message !== "object") return undefined;
+
+  const interactive = message.interactive as Record<string, unknown> | undefined;
+  if (interactive && typeof interactive === "object") {
+    const buttonReply = pick(interactive, "buttonReply", "button_reply");
+    if (buttonReply) {
+      const id = readString(buttonReply.id);
+      const title = readString(buttonReply.title);
+      if (id !== undefined && title !== undefined) return { id, title, source: "button_reply" };
+    }
+    const listReply = pick(interactive, "listReply", "list_reply");
+    if (listReply) {
+      const id = readString(listReply.id);
+      const title = readString(listReply.title);
+      if (id !== undefined && title !== undefined) {
+        const description = readString(listReply.description);
+        return description !== undefined ? { id, title, description, source: "list_reply" } : { id, title, source: "list_reply" };
+      }
+    }
+  }
+
+  if (message.type === "button") {
+    const button = (message.button && typeof message.button === "object" ? message.button : undefined) as Record<string, unknown> | undefined;
+    const data = pick((message.kapso ?? {}) as Record<string, unknown>, "messageTypeData", "message_type_data");
+    const id = readString(button?.payload) ?? readString(data?.payload);
+    const title = readString(button?.text) ?? readString(data?.text);
+    if (id !== undefined || title !== undefined) {
+      return { id: id ?? title!, title: title ?? id!, source: "button" };
+    }
+  }
+
+  return undefined;
+}
+
+function pick(source: Record<string, unknown>, camel: string, snake: string): Record<string, unknown> | undefined {
+  const value = source[camel] ?? source[snake];
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
 export function normalizeMessage(message: MetaMessage): UnifiedMessage {
   const normalized = toCamelCaseDeep(message) as UnifiedMessage;
 

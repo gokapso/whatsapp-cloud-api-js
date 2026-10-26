@@ -7,6 +7,7 @@
 - `normalizeKapsoWebhook(payload, { headers })` in `@kapso/whatsapp-cloud-api/server` normalizes Kapso-format webhook deliveries (payload v2), both single events and batch envelopes, into the `normalizeWebhook` result shape plus Kapso extras: `event`, `idempotencyKey`, `payloadVersion`, `batch`, `batchInfo`, typed `events[]` and `conversations[]`. Inbound messages land in `messages`; `whatsapp.message.sent|delivered|read|failed` become `statuses` built from `message.kapso.statuses`, keeping `pricing` and `errors`.
 - `readKapsoWebhookHeaders`, `KAPSO_WEBHOOK_HEADERS`, `isKapsoWebhookPayload` and `getKapsoSender` (returns `{ to }` and/or `{ recipient }` for phone or BSUID-only senders).
 - `signKapsoWebhook({ secret, rawBody })`, the inverse of `verifyKapsoWebhookSignature`, for tests and replay tooling.
+- `getTappedOption(message)` returns `{ id, title, source }` for the three shapes a tap can arrive in: `interactive.button_reply`, `interactive.list_reply`, and the `type: "button"` message that template and free-form carousel quick replies produce (`button.text`, `button.payload`). `MetaMessage` gains the optional `button` field for that third shape.
 - Types: `NormalizedKapsoWebhookResult`, `KapsoWebhookEvent`, `KapsoWebhookEventName`, `KapsoWebhookHeaders`, `KapsoWebhookConversation`, `KapsoWebhookBatchInfo`, `WebhookHeadersLike`. `MessageStatusUpdate` is now exported from the package root as well.
 
 ### Changed

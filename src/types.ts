@@ -238,6 +238,12 @@ export interface MetaMessage {
   document?: { id?: string; link?: string; filename?: string; caption?: string; [key: string]: unknown };
   location?: { latitude?: number; longitude?: number; name?: string; address?: string; [key: string]: unknown };
   interactive?: Record<string, unknown>;
+  /**
+   * Quick reply tapped on a template or on a free-form carousel card. Meta
+   * delivers these as `type: "button"` with the button label in `text` and the
+   * configured id in `payload`, not as `interactive.button_reply`.
+   */
+  button?: { text?: string; payload?: string; [key: string]: unknown };
   template?: { name?: string; language?: Record<string, unknown>; components?: Array<Record<string, unknown>>; [key: string]: unknown };
   order?: { catalogId?: string; productItems?: Array<Record<string, unknown>>; orderText?: string; [key: string]: unknown };
   sticker?: { id?: string; link?: string; mimeType?: string; animated?: boolean; [key: string]: unknown };

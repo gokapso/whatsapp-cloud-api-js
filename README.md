@@ -54,6 +54,7 @@ Query conversations, messages, contacts, and more.
 - [`verifySignature`](https://docs.kapso.ai/docs/whatsapp/typescript-sdk/utilities#webhooks) — verify webhook signatures (app secret)
 - [`verifyKapsoWebhookSignature`, `normalizeKapsoWebhook`, `getKapsoSender`](#kapso-webhooks-payload-v2): verify and normalize Kapso-format webhooks (`X-Webhook-Signature`, single or batched deliveries, status history, BSUID senders)
 - [`signKapsoWebhook`](#kapso-webhooks-payload-v2): sign a raw body like Kapso does, for tests and replay tooling
+- [`getTappedOption`](#webhooks): the option a user tapped, whether it arrived as `interactive.button_reply`, `interactive.list_reply` or a `type: "button"` quick reply from a template or carousel card
 - `receiveFlowEvent`, `respondToFlow`, `downloadFlowMedia` — decrypt and respond to Flow callbacks
 - [`TemplateDefinition`](#templates) — strict template creation builders
 - [`buildTemplateSendPayload`](#typed-builder-optional) — build send-time template payloads
@@ -812,6 +813,19 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
 
 `normalizeWebhook()` unwraps the raw Graph payload, returning `{ messages, statuses, calls, contacts }` with camelCased fields so webhook events and history queries share the same Meta-compatible structure. Each normalized message also gets `kapso.direction` (`"inbound"`/`"outbound"`) and SMB echoes are tagged with `kapso.source = "smb_message_echo"` so you can tell when the business initiated a message. All other webhook `field` payloads are exposed under `events.raw.<fieldName>` (camelCased), so you can react to updates like `accountAlerts`, `templateCategoryUpdate`, etc., without additional parsing.
 
+Taps arrive in three shapes: reply buttons as `interactive.button_reply`, list rows as `interactive.list_reply`, and quick replies on templates and on free-form carousel cards as a top-level `type: "button"` message with `button.text` and `button.payload` (Kapso mirrors the pair in `kapso.messageTypeData`). `getTappedOption(message)` returns `{ id, title, source }` for all three, with `payload` as the `id`, so one branch handles every tap:
+
+```ts
+import { getTappedOption } from "@kapso/whatsapp-cloud-api/server";
+
+for (const message of events.messages) {
+  const tap = getTappedOption(message);
+  if (tap) {
+    // tap.id is the button id, row id or quick reply payload you configured
+  }
+}
+```
+
 ### Kapso webhooks (payload v2)
 
 Webhooks registered with `kind: "kapso"` (the default when Kapso provisions your number) do not deliver Meta's Graph payload. They deliver Kapso's v2 payload, `{ message, conversation, is_new_conversation, phone_number_id }`, or a `{ type, batch: true, data: [...], batch_info }` envelope when message buffering is on, with the event name in `X-Webhook-Event` and a per-delivery id in `X-Idempotency-Key`. `normalizeKapsoWebhook()` turns either shape into the same structure `normalizeWebhook()` returns, plus the Kapso extras, so one handler can serve both webhook kinds.
@@ -864,6 +878,7 @@ What you get back:
 - `messages`: inbound messages from `whatsapp.message.received` (and `whatsapp.thread.standby`), run through the same normalizer as the Meta path, so `kapso.flowResponse`, `kapso.orderText` and the `kapso` block (`mediaData`, `mediaUrl`, `transcript`, `origin`, `contactName`, `whatsappConversationId`, ...) come out camelCased.
 - `statuses`: `MessageStatusUpdate` entries derived from `whatsapp.message.sent|delivered|read|failed`, taken from the matching entry of `message.kapso.statuses` so `pricing` and `errors` are preserved.
 - `contacts`: one per conversation with `waId`, `userId` (business-scoped user ID) and `profile.name` / `profile.username`.
+- Taps on carousel cards and template quick replies arrive as `type: "button"` messages; `getTappedOption(message)` reads them together with `button_reply` and `list_reply`.
 - `event`, `idempotencyKey`, `payloadVersion`, `batch`, `batchInfo`, `events[]` (one typed entry per delivery item, including `conversation.*`, `contact.*` and `thread.*` payloads) and `conversations[]`.
 
 Notes:
