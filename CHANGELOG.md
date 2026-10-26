@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `flows.deploy()` works through the Kapso proxy. Its internal `updateAsset`, `publish` and `preview` calls hit Flow routes that carry no WABA in the path, and the proxy answered `404 WhatsApp configuration not found` because `deploy` never forwarded a scope. On the proxy, `deploy` now scopes those calls to the `wabaId` it already receives; `DeployFlowOptions` also accepts `phoneNumberId` and `businessAccountId` to pin a configuration explicitly. Direct Graph API calls are unchanged.
+- `flows.get()` accepts `phoneNumberId` and `businessAccountId`, like the other single-Flow methods, so it can be used through the proxy.
+
 ## 0.4.0
 
 Includes the call features merged after 0.3.0, together with the resource/media and Flow fixes listed below.

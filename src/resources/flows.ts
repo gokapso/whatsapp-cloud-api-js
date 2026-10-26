@@ -52,7 +52,20 @@ export interface UpdateFlowAssetOptions {
   businessAccountId?: string;
 }
 
-export interface DeployFlowOptions {
+/**
+ * Identifies which WhatsApp configuration a Flow belongs to when the request
+ * goes through the Kapso proxy. Flow routes such as `/{flowId}/assets` carry
+ * no WABA in the path, so the proxy needs one of these as a query parameter
+ * (`phone_number_id` or `business_account_id`). Meta's Graph API ignores them.
+ */
+export interface FlowScope {
+  /** Resolve the configuration by phone number. Takes precedence over businessAccountId. */
+  phoneNumberId?: string;
+  /** Resolve the configuration by WhatsApp Business Account ID. */
+  businessAccountId?: string;
+}
+
+export interface DeployFlowOptions extends FlowScope {
   name: string;
   wabaId: string;
   endpointUri?: string;
@@ -195,9 +208,14 @@ export class FlowsResource {
     };
   }
 
-  async get<T = unknown>(options: { flowId: string; fields?: string }): Promise<T> {
-    return this.client.request("GET", `/${options.flowId}`, {
-      query: options.fields ? { fields: options.fields } : undefined,
+  async get<T = unknown>(options: { flowId: string; fields?: string } & FlowScope): Promise<T> {
+    const { flowId, fields, phoneNumberId, businessAccountId } = options;
+    const query: Record<string, unknown> = {};
+    if (fields) query.fields = fields;
+    if (phoneNumberId) query.phoneNumberId = phoneNumberId;
+    if (businessAccountId) query.businessAccountId = businessAccountId;
+    return this.client.request("GET", `/${flowId}`, {
+      query: Object.keys(query).length ? query : undefined,
       responseType: "json"
     }) as Promise<T>;
   }
@@ -216,6 +234,7 @@ export class FlowsResource {
 
   async deploy(flowJson: Record<string, unknown>, options: DeployFlowOptions): Promise<DeployResult> {
     const { name, wabaId, endpointUri, publish, preview, flowId: providedFlowId, categories, forceAssetUpload } = options;
+    const scope = this.resolveScope(options, wabaId);
     const cacheKey = this.buildCacheKey(wabaId, name);
     const hash = computeFlowJsonHash(flowJson);
 
@@ -237,7 +256,7 @@ export class FlowsResource {
     } else {
       const last = this.lastDeployedHashes.get(cacheKey);
       if (!last || last.hash !== hash || forceAssetUpload) {
-        const update = await this.updateAsset({ flowId, json: flowJson });
+        const update = await this.updateAsset({ flowId, json: flowJson, ...scope });
         if (update.validationErrors?.length) {
           validationErrors = update.validationErrors;
         }
@@ -250,7 +269,7 @@ export class FlowsResource {
     }
 
     if (publish) {
-      await this.publish({ flowId });
+      await this.publish({ flowId, ...scope });
     }
 
     let previewUrl: string | undefined;
@@ -259,7 +278,8 @@ export class FlowsResource {
       const previewResponse = await this.preview({
         flowId,
         interactive: previewOptions.interactive,
-        params: previewOptions.params
+        params: previewOptions.params,
+        ...scope
       });
       previewUrl = previewResponse.preview.previewUrl || undefined;
     }
@@ -269,6 +289,19 @@ export class FlowsResource {
       previewUrl,
       validationErrors
     };
+  }
+
+  /**
+   * Explicit scope wins. Without one, requests through the Kapso proxy fall
+   * back to the WABA that deploy already receives, so the documented
+   * `deploy(flowJson, { wabaId, name })` call works unchanged on the proxy.
+   * Direct Graph API calls get no scope parameters.
+   */
+  private resolveScope(explicit: FlowScope, wabaId: string): FlowScope {
+    if (explicit.phoneNumberId) return { phoneNumberId: explicit.phoneNumberId };
+    if (explicit.businessAccountId) return { businessAccountId: explicit.businessAccountId };
+    if (this.client.isKapsoProxy()) return { businessAccountId: wabaId };
+    return {};
   }
 
   private buildCacheKey(wabaId: string, name: string): string {

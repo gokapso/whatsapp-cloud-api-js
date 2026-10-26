@@ -78,6 +78,23 @@ console.log("Preview URL:", result.previewUrl);
 console.log("Validation errors:", result.validationErrors);
 ```
 
+### Through the Kapso proxy
+
+Flow routes such as `/{flowId}/assets`, `/{flowId}/publish` and `/{flowId}` carry no WABA in the path, so the Kapso proxy needs to know which WhatsApp configuration the Flow belongs to. `deploy()` handles this for you: on the proxy it scopes the asset upload, publish and preview calls to the `wabaId` you already pass. Pass `phoneNumberId` (or `businessAccountId`) when a project has several numbers and you want to pin one:
+
+```ts
+const client = new WhatsAppClient({
+  baseUrl: "https://api.kapso.ai/meta/whatsapp",
+  kapsoApiKey: process.env.KAPSO_API_KEY!,
+});
+
+await client.flows.deploy(csatFlow, { wabaId, name: "csat-flow", publish: true });
+await client.flows.deploy(csatFlow, { wabaId, name: "csat-flow", flowId, phoneNumberId });
+await client.flows.get({ flowId, fields: "id,status,validation_errors", phoneNumberId });
+```
+
+The lower-level `updateAsset`, `publish`, `deprecate`, `preview` and `get` take the same two optional fields. Without one of them the proxy answers `404 WhatsApp configuration not found`. Direct Graph API calls never receive these parameters.
+
 ## 3. Send Flow messages
 
 Use `client.messages.sendInteractiveFlow` (typed with `FlowInteractiveInput`) to trigger your flow. `flowCta` is required; `flowMessageVersion` defaults to `"3"` when omitted. Meta treats an omitted `mode` as `"published"`, so pass `mode: "draft"` when testing an unpublished Flow.

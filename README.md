@@ -90,6 +90,7 @@ const client = new WhatsAppClient({
 
 Notes:
 - Media GET/DELETE requires `phoneNumberId` query on the proxy.
+- Flow routes without a WABA in the path (`updateAsset`, `publish`, `deprecate`, `preview`, `get`) need `phoneNumberId` or `businessAccountId`; `flows.deploy()` fills it in from `wabaId` on the proxy. See [docs/flows.md](docs/flows.md).
 - Responses mirror Meta’s Cloud API message schema.
 - Kapso-only enrichments live under the `kapso` key; use the `fields` parameter (for example `fields: "kapso(flow_response,flow_token)"`) to opt into specific fields or `fields: "kapso()"` to omit them entirely.
 - You can also pass a bearer `accessToken` instead of `kapsoApiKey` if you’ve stored a token with Kapso.
