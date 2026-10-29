@@ -2,7 +2,6 @@ import { WhatsAppClient } from "../client";
 import {
   toFlowJsonWireCase,
   computeFlowJsonHash,
-  fromFlowJsonWireCase,
   fromWireKeyName
 } from "../utils/flow-json";
 import { isPlainObject } from "../utils/case";
