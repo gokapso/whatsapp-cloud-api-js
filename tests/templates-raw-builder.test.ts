@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildTemplatePayload } from "../src/resources/templates/raw";
+import { buildTemplatePayload, type RawTemplatePayloadInput } from "../src/resources/templates/raw";
 import type {
   TemplateComponent,
   TemplateBodyComponent,
-  TemplateButtonComponent,
   TemplateCarouselComponent,
   TemplateHeaderComponent,
   TemplateSendPayload
@@ -19,13 +18,6 @@ function expectHeader(component: TemplateComponent): TemplateHeaderComponent {
 function expectBody(component: TemplateComponent): TemplateBodyComponent {
   if (component.type !== "body") {
     throw new Error(`Expected body component, received ${component.type}`);
-  }
-  return component;
-}
-
-function expectButton(component: TemplateComponent): TemplateButtonComponent {
-  if (component.type !== "button") {
-    throw new Error(`Expected button component, received ${component.type}`);
   }
   return component;
 }
@@ -56,7 +48,7 @@ describe("buildTemplatePayload", () => {
         components: [
           { type: "body", parameters: [{ type: "text", text: "Hi" }] }
         ]
-      } as any)
+      } as unknown as RawTemplatePayloadInput)
     ).toThrowError(/name/i);
   });
 
@@ -67,7 +59,7 @@ describe("buildTemplatePayload", () => {
         components: [
           { type: "body", parameters: [{ type: "text", text: "Hi" }] }
         ]
-      } as any)
+      } as unknown as RawTemplatePayloadInput)
     ).toThrowError(/language/i);
   });
 
@@ -75,7 +67,7 @@ describe("buildTemplatePayload", () => {
     expect(() =>
       buildTemplatePayload({
         name: "tpl",
-        language: { code: "en_US", region: "US" } as any,
+        language: { code: "en_US", region: "US" } as unknown as RawTemplatePayloadInput["language"],
         components: [
           { type: "body", parameters: [{ type: "text", text: "Hi" }] }
         ]
@@ -87,7 +79,7 @@ describe("buildTemplatePayload", () => {
     expect(() =>
       buildTemplatePayload({
         name: "tpl",
-        language: { code: "en_US" } as any,
+        language: { code: "en_US" } as RawTemplatePayloadInput["language"],
         components: [
           { type: "body", parameters: [{ type: "text", text: "Hi" }] }
         ]
@@ -246,7 +238,7 @@ describe("buildTemplatePayload", () => {
         components: [
           {
             type: "body",
-            parameters: [null as any]
+            parameters: [null]
           }
         ]
       })
@@ -899,7 +891,7 @@ describe("buildTemplatePayload", () => {
           }
         ],
         category: "MARKETING"
-      } as any)
+      } as unknown as RawTemplatePayloadInput)
     ).toThrowError(/unrecognized key/i);
   });
 
@@ -929,7 +921,7 @@ describe("buildTemplatePayload", () => {
         components: [
           {
             type: "header",
-            parameters: null as any
+            parameters: null
           }
         ]
       })
@@ -968,7 +960,18 @@ describe("buildTemplatePayload", () => {
     ).toThrowError(/must be a valid URL/i);
   });
 
-  it("throws when button index is out of range", () => {
+  it.each([
+    { index: -1 },
+    { index: 10 },
+    { index: 1.5 },
+    { index: "not-an-index" },
+    { index: true },
+    { index: false },
+    { index: [] },
+    { index: {} },
+    { index: NaN },
+    { index: Infinity }
+  ])("rejects invalid button index $index", ({ index }) => {
     expect(() =>
       buildTemplatePayload({
         name: "tpl",
@@ -977,7 +980,7 @@ describe("buildTemplatePayload", () => {
           {
             type: "button",
             subType: "url",
-            index: 10,
+            index,
             parameters: [{ type: "text", text: "promo" }]
           }
         ]
@@ -997,7 +1000,7 @@ describe("buildTemplatePayload", () => {
             parameters: [{ type: "text", text: "ok" }]
           }
         ]
-      } as any)
+      })
     ).toThrowError(/components\[0\]\.sub_type/i);
   });
 
@@ -1013,7 +1016,7 @@ describe("buildTemplatePayload", () => {
             parameters: [{ type: "text", text: "promo" }]
           }
         ]
-      } as any)
+      })
     ).toThrowError(/components\[0\]\.index is required/);
   });
 
@@ -1049,7 +1052,7 @@ describe("buildTemplatePayload", () => {
         components: [
           {
             type: "body",
-            parameters: null as any
+            parameters: null
           }
         ]
       })
@@ -1218,7 +1221,7 @@ describe("buildTemplatePayload", () => {
             type: "button",
             sub_type: "flow",
             index: 0,
-            parameters: { type: "payload" } as any
+            parameters: { type: "payload" }
           }
         ]
       })
@@ -1254,7 +1257,7 @@ describe("buildTemplatePayload", () => {
       buildTemplatePayload({
         name: "tpl",
         language: "en_US",
-        components: [{} as any]
+        components: [{} as RawTemplatePayloadInput["components"][number]]
       })
     ).toThrowError(/components\[0\]\.type is required/);
   });

@@ -97,7 +97,7 @@ describe("Flow JSON case mapping", () => {
       ]
     });
 
-    const dropdown = (result as any).screens[0].layout.children[0];
+    const dropdown = result.screens[0].layout.children[0];
     expect(dropdown).toHaveProperty("data-source", "${data.availableSlots}");
     expect(dropdown).not.toHaveProperty("dataSource");
     expect(dropdown).toHaveProperty("on-select-action");
@@ -105,7 +105,7 @@ describe("Flow JSON case mapping", () => {
     expect(dropdown).toHaveProperty("some-new-prop", "value");
 
     // ensure developer-defined schema fields remain untouched
-    const dataSchema = (result as any).screens[0].data;
+    const dataSchema = result.screens[0].data;
     expect(dataSchema).toHaveProperty("availableSlots");
   });
 
@@ -133,7 +133,7 @@ describe("Flow JSON case mapping", () => {
           { "left-caption": "Hi" }
         ]
       }
-    } as any;
+    };
 
     expect(() => toFlowJsonWireCase(withSnake, { strictCamel: false })).not.toThrow();
   });
@@ -174,7 +174,7 @@ describe("Flow JSON canonicalization & hashing", () => {
   });
 
   it("throws descriptive error when hashing implementation is missing", () => {
-    __setHashImplementation(null as any);
+    __setHashImplementation(null);
     expect(() => computeFlowJsonHash({ version: "7.2" })).toThrow(/SHA-256 hashing is not available/);
   });
 });

@@ -7,6 +7,6 @@ describe("Root exports", () => {
   });
 
   it("exposes buildTemplatePayload", () => {
-    expect(typeof (root as any).buildTemplatePayload).toBe("function");
+    expect(typeof root.buildTemplatePayload).toBe("function");
   });
 });

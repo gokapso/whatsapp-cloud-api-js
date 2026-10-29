@@ -628,7 +628,7 @@ const TemplateDefinitionSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Template cannot include more than one CAROUSEL component", path: ["components"] });
     }
 
-    const otpButtonTemplate = value.components.some((component) => component.type === "BUTTONS" && component.buttons.some((btn: any) => btn.type === "OTP"));
+    const otpButtonTemplate = value.components.some((component) => component.type === "BUTTONS" && component.buttons.some((btn) => btn.type === "OTP"));
     if (otpButtonTemplate && value.category !== "AUTHENTICATION") {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "OTP buttons are only allowed for AUTHENTICATION templates", path: ["components"] });
     }

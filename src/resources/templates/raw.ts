@@ -174,51 +174,51 @@ function normalizeHeaderParameter(parameters: unknown, path: string) {
   const param = clone(parameters[0]);
   const paramPath = `${path}.parameters[0]`;
 
-  if (!param || typeof param !== "object" || typeof (param as any).type !== "string") {
+  if (!param || typeof param !== "object" || typeof (param as Record<string, unknown>).type !== "string") {
     throw new Error(`${paramPath}.type is required`);
   }
 
-  const type = ((param as any).type as string).toLowerCase();
-  (param as any).type = type;
+  const type = ((param as Record<string, unknown>).type as string).toLowerCase();
+  (param as Record<string, unknown>).type = type;
 
   if (type === "text") {
-    const text = ensureString((param as any).text, `${paramPath}.text`);
+    const text = ensureString((param as Record<string, unknown>).text, `${paramPath}.text`);
     if (!text.trim()) {
       throw new Error(`${paramPath}.text must be a non-empty string`);
     }
-    (param as any).text = text;
+    (param as Record<string, unknown>).text = text;
     return param as TemplateHeaderParameter;
   }
 
   if (type === "image" || type === "video" || type === "document") {
     const mediaKey = type;
-    const media = clone((param as any)[mediaKey]);
+    const media = clone((param as Record<string, unknown>)[mediaKey]);
     if (!media || typeof media !== "object") {
       throw new Error(`${paramPath}.${mediaKey} must be an object containing id or link`);
     }
-    const id = (media as any).id;
-    const link = (media as any).link;
+    const id = (media as Record<string, unknown>).id;
+    const link = (media as Record<string, unknown>).link;
     if (!id && !link) {
       throw new Error(`${paramPath}.${mediaKey} requires id or link`);
     }
     if (link) {
       ensureValidUrl(link, `${paramPath}.${mediaKey}.link`);
     }
-    (param as any)[mediaKey] = media;
+    (param as Record<string, unknown>)[mediaKey] = media;
     return param as TemplateHeaderParameter;
   }
 
   if (type === "location") {
-    const location = clone((param as any).location);
+    const location = clone((param as Record<string, unknown>).location);
     if (!location || typeof location !== "object") {
       throw new Error(`${paramPath}.location must be an object`);
     }
-    const latitude = (location as any).latitude;
-    const longitude = (location as any).longitude;
+    const latitude = (location as Record<string, unknown>).latitude;
+    const longitude = (location as Record<string, unknown>).longitude;
     if (!isNumberLike(latitude) || !isNumberLike(longitude)) {
       throw new Error(`${paramPath}.location.latitude and longitude must be provided`);
     }
-    (param as any).location = {
+    (param as Record<string, unknown>).location = {
       ...location,
       latitude,
       longitude
@@ -237,48 +237,48 @@ function normalizeBodyParameters(parameters: unknown, path: string) {
   return parameters.map((parameter, index) => {
     const paramPath = `${path}.parameters[${index}]`;
     const cloned = clone(parameter);
-    if (!cloned || typeof cloned !== "object" || typeof (cloned as any).type !== "string") {
+    if (!cloned || typeof cloned !== "object" || typeof (cloned as Record<string, unknown>).type !== "string") {
       throw new Error(`${paramPath}.type is required`);
     }
 
-    const type = ((cloned as any).type as string).toLowerCase();
-    (cloned as any).type = type;
+    const type = ((cloned as Record<string, unknown>).type as string).toLowerCase();
+    (cloned as Record<string, unknown>).type = type;
 
     if (type === "text") {
-      const text = ensureString((cloned as any).text, `${paramPath}.text`);
+      const text = ensureString((cloned as Record<string, unknown>).text, `${paramPath}.text`);
       if (!text.trim()) {
         throw new Error(`${paramPath}.text must be a non-empty string`);
       }
-      (cloned as any).text = text;
+      (cloned as Record<string, unknown>).text = text;
       return cloned as TemplateBodyParameter;
     }
 
     if (type === "currency") {
-      const currency = clone((cloned as any).currency);
+      const currency = clone((cloned as Record<string, unknown>).currency);
       if (!currency || typeof currency !== "object") {
         throw new Error(`${paramPath}.currency must be an object`);
       }
-      const fallbackValueKey = (currency as any).fallbackValue !== undefined ? "fallbackValue" : "fallback_value";
-      ensureString((currency as any)[fallbackValueKey], `${paramPath}.currency.fallback_value`);
-      ensureString((currency as any).code, `${paramPath}.currency.code`);
-      const amountKey = (currency as any).amount1000 !== undefined ? "amount1000" : "amount_1000";
-      const amount = (currency as any)[amountKey];
+      const fallbackValueKey = (currency as Record<string, unknown>).fallbackValue !== undefined ? "fallbackValue" : "fallback_value";
+      ensureString((currency as Record<string, unknown>)[fallbackValueKey], `${paramPath}.currency.fallback_value`);
+      ensureString((currency as Record<string, unknown>).code, `${paramPath}.currency.code`);
+      const amountKey = (currency as Record<string, unknown>).amount1000 !== undefined ? "amount1000" : "amount_1000";
+      const amount = (currency as Record<string, unknown>)[amountKey];
       if (!Number.isInteger(amount)) {
         throw new Error(`${paramPath}.currency.amount_1000 must be an integer`);
       }
-      (cloned as any).currency = currency;
+      (cloned as Record<string, unknown>).currency = currency;
       return cloned as TemplateBodyParameter;
     }
 
     if (type === "date_time") {
-      const dateTimeKey = (cloned as any).dateTime !== undefined ? "dateTime" : "date_time";
-      const dateTime = clone((cloned as any)[dateTimeKey]);
+      const dateTimeKey = (cloned as Record<string, unknown>).dateTime !== undefined ? "dateTime" : "date_time";
+      const dateTime = clone((cloned as Record<string, unknown>)[dateTimeKey]);
       if (!dateTime || typeof dateTime !== "object") {
         throw new Error(`${paramPath}.date_time must be an object`);
       }
-      const fallbackValueKey = (dateTime as any).fallbackValue !== undefined ? "fallbackValue" : "fallback_value";
-      ensureString((dateTime as any)[fallbackValueKey], `${paramPath}.date_time.fallback_value`);
-      (cloned as any)[dateTimeKey] = dateTime;
+      const fallbackValueKey = (dateTime as Record<string, unknown>).fallbackValue !== undefined ? "fallbackValue" : "fallback_value";
+      ensureString((dateTime as Record<string, unknown>)[fallbackValueKey], `${paramPath}.date_time.fallback_value`);
+      (cloned as Record<string, unknown>)[dateTimeKey] = dateTime;
       return cloned as TemplateBodyParameter;
     }
 
@@ -287,14 +287,14 @@ function normalizeBodyParameters(parameters: unknown, path: string) {
 }
 
 function normalizeButtonComponent(component: Record<string, unknown>, path: string) {
-  const subTypeRaw = (component as any).subType ?? (component as any).sub_type;
+  const subTypeRaw = component.subType ?? component.sub_type;
   const subType = ensureString(subTypeRaw, `${path}.sub_type`).toLowerCase();
-  const index = (component as any).index;
+  const index = component.index;
   if (index === undefined || index === null) {
     throw new Error(`${path}.index is required for button components`);
   }
   const indexNumber = typeof index === "string" ? Number(index) : index;
-  if (!Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber > 9) {
+  if (typeof indexNumber !== "number" || !Number.isInteger(indexNumber) || indexNumber < 0 || indexNumber > 9) {
     throw new Error(`${path}.index must be an integer between 0 and 9`);
   }
 
@@ -430,14 +430,14 @@ function normalizeQuickReplyParameters(parameters: unknown, path: string): Templ
 
   return parameters.map((param, paramIndex) => {
     const cloned = clone(param);
-    if (!cloned || typeof cloned !== "object" || typeof (cloned as any).type !== "string") {
+    if (!cloned || typeof cloned !== "object" || typeof (cloned as Record<string, unknown>).type !== "string") {
       throw new Error(`${path}.parameters[${paramIndex}].type is required`);
     }
-    (cloned as any).type = ((cloned as any).type as string).toLowerCase();
-    if ((cloned as any).type !== "payload") {
+    (cloned as Record<string, unknown>).type = ((cloned as Record<string, unknown>).type as string).toLowerCase();
+    if ((cloned as Record<string, unknown>).type !== "payload") {
       throw new Error(`${path}.parameters[${paramIndex}].type must be 'payload'`);
     }
-    ensureString((cloned as any).payload, `${path}.parameters[${paramIndex}].payload`);
+    ensureString((cloned as Record<string, unknown>).payload, `${path}.parameters[${paramIndex}].payload`);
     return cloned as TemplateButtonParameterQuickReply;
   }) as TemplateButtonParameterQuickReply[];
 }
@@ -456,14 +456,14 @@ function normalizeButtonTextParameters(
 
   return parameters.map((param, index) => {
     const cloned = clone(param);
-    if (!cloned || typeof cloned !== "object" || typeof (cloned as any).type !== "string") {
+    if (!cloned || typeof cloned !== "object" || typeof (cloned as Record<string, unknown>).type !== "string") {
       throw new Error(`${path}.parameters[${index}].type is required`);
     }
-    (cloned as any).type = ((cloned as any).type as string).toLowerCase();
-    if ((cloned as any).type !== "text") {
+    (cloned as Record<string, unknown>).type = ((cloned as Record<string, unknown>).type as string).toLowerCase();
+    if ((cloned as Record<string, unknown>).type !== "text") {
       throw new Error(`${path}.parameters[${index}].type must be 'text'`);
     }
-    const text = ensureString((cloned as any).text, `${path}.parameters[${index}].text`);
+    const text = ensureString((cloned as Record<string, unknown>).text, `${path}.parameters[${index}].text`);
     if (!text.trim()) {
       throw new Error(`${path}.parameters[${index}].text must be a non-empty string`);
     }
@@ -485,14 +485,14 @@ function normalizeButtonCopyCodeParameters(parameters: unknown, path: string): T
 
   return parameters.map((param, index) => {
     const cloned = clone(param);
-    if (!cloned || typeof cloned !== "object" || typeof (cloned as any).type !== "string") {
+    if (!cloned || typeof cloned !== "object" || typeof (cloned as Record<string, unknown>).type !== "string") {
       throw new Error(`${path}.parameters[${index}].type is required`);
     }
-    (cloned as any).type = ((cloned as any).type as string).toLowerCase();
-    if ((cloned as any).type !== "coupon_code") {
+    (cloned as Record<string, unknown>).type = ((cloned as Record<string, unknown>).type as string).toLowerCase();
+    if ((cloned as Record<string, unknown>).type !== "coupon_code") {
       throw new Error(`${path}.parameters[${index}].type must be 'coupon_code'`);
     }
-    const code = ensureString((cloned as any).coupon_code, `${path}.parameters[${index}].coupon_code`);
+    const code = ensureString((cloned as Record<string, unknown>).coupon_code, `${path}.parameters[${index}].coupon_code`);
     if (!code.trim()) {
       throw new Error(`${path}.parameters[${index}].coupon_code must be a non-empty string`);
     }
@@ -560,10 +560,10 @@ function normalizeFlowParameters(parameters: unknown, path: string): TemplateBut
     throw new Error(`${path}.parameters must be an array`);
   }
 
-  return parameters.map((param, index) => {
+  return parameters.map((param) => {
     const cloned = clone(param);
-    if (cloned && typeof cloned === "object" && "type" in (cloned as any) && typeof (cloned as any).type === "string") {
-      (cloned as any).type = ((cloned as any).type as string).toLowerCase();
+    if (cloned && typeof cloned === "object" && "type" in (cloned as Record<string, unknown>) && typeof (cloned as Record<string, unknown>).type === "string") {
+      (cloned as Record<string, unknown>).type = ((cloned as Record<string, unknown>).type as string).toLowerCase();
     }
     return cloned as TemplateButtonParameterFlow;
   }) as TemplateButtonParameterFlow[];

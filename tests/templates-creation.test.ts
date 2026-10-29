@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTemplateDefinition } from "../src/resources/templates/definition";
+import { buildTemplateDefinition, type TemplateDefinitionInput } from "../src/resources/templates/definition";
 
 describe("Template definition validation", () => {
   it("accepts a text-only body template", () => {
@@ -392,7 +392,7 @@ describe("Template definition validation", () => {
         name: "bad_param_format",
         language: "en_US",
         category: "UTILITY",
-        parameterFormat: "INVALID" as any,
+        parameterFormat: "INVALID" as TemplateDefinitionInput["parameterFormat"],
         components: [
           { type: "BODY", text: "Hi" }
         ]

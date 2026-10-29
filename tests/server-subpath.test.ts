@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { describe, it, expect } from "vitest";
 
 // Import from the server-only subpath in source. The built package will expose
@@ -17,8 +18,7 @@ describe("Server subpath", () => {
     const appSecret = "shhh";
     const body = Buffer.from(JSON.stringify({ hello: "world" }));
     // Compute the signature using Node's crypto for the test oracle
-    const crypto = require("node:crypto");
-    const expected = crypto.createHmac("sha256", appSecret).update(body).digest("hex");
+    const expected = createHmac("sha256", appSecret).update(body).digest("hex");
     const header = `sha256=${expected}`;
     expect(
       verifySignature({ appSecret, rawBody: body, signatureHeader: header })
