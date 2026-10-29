@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+      # package-lock.json is canonical. The prepare script also builds the SDK.
+      - run: npm ci --no-audit --no-fund
+      - run: git diff --exit-code -- package.json package-lock.json
+      # The test script runs typecheck before Vitest.
+      - run: bun run test
+      - run: npm pack --dry-run
+      - run: bun run lint

@@ -921,6 +921,31 @@ the numeric `GraphApiError.code`/`httpStatus` and expose structured codes (such 
 Tests use offline fixtures and packed builds. They verify protocol and package
 behavior; they do not prove production availability or native handset capture.
 
+## Dependency maintenance
+
+`package-lock.json` is the canonical lockfile. Use `npm ci` for clean, frozen
+installs; its `prepare` script builds the SDK. Use Bun to run the existing checks:
+
+```sh
+npm ci
+bun run test # typecheck and Vitest
+bun run lint
+bun run build
+npm pack --dry-run
+```
+
+Direct dependencies and development tools use exact versions from the lockfile.
+The repository's `.npmrc` saves new dependencies exactly. Use npm to add or update
+dependencies so the canonical lock stays coherent; do not add a second lockfile.
+Keep peer dependency ranges and Node engine requirements as compatibility contracts.
+
+Review dependency updates regularly and when security advisories appear. Update
+`package.json` and `package-lock.json` together in a focused PR, review the resolved
+tree changes, and run the checks above before merging. Updates should arrive through
+tested PRs rather than automatic range drift. Pinning is not a vulnerability fix.
+Exact direct versions do not freeze every transitive dependency for npm consumers;
+the published SDK does not ship a shrinkwrap or bundled dependency tree.
+
 ## License
 
 MIT
